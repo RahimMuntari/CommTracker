@@ -1,0 +1,51 @@
+<nav class="bg-white shadow-md fixed w-full z-10">
+<!-- <nav class="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"> -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+
+      <!-- Logo -->
+      <a class="shrink-0 flex items-center text-xl font-bold text-black">
+        COMM. TRACKER
+      </a>
+
+      <!-- Desktop Menu -->
+      <div class="hidden md:flex space-x-6 items-center">
+        <a class="text-gray-700 hover:text-blue-600">Home</a>
+        <a class="text-gray-700 hover:text-blue-600">About</a>
+        <a class="text-gray-700 hover:text-blue-600">Call Data Records</a>
+        <a class="text-gray-700 hover:text-blue-600">Mobile Money Records</a>
+        <a class="text-gray-700 hover:text-blue-600">Contact</a>
+      </div>
+
+       <!-- Dark Mode Toggle -->
+      <button 
+        (click)="toggleDarkMode()" 
+        class="h-10 w-10 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+      >
+        {{ isDarkMode ? '🌙' : '☀️' }}
+      </button>
+
+      <!-- Mobile Hamburger -->
+      <div class="flex items-center md:hidden">
+        <button (click)="toggleMenu()" class="text-gray-700 focus:outline-none">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"
+               viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  @if (isMenuOpen) {
+    <div class="md:hidden bg-white border-t border-gray-200">
+      <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Home</a>
+      <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">About</a>
+      <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Services</a>
+      <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Contact</a>
+    </div>
+  }
+
+ 
+</nav>

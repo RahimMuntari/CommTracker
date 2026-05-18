@@ -1,0 +1,89 @@
+
+<div class="mx-auto w-full max-w-md px-3 sm:max-w-2xl sm:px-4 lg:px-6">
+  <div class="rounded-xl bg-white p-4 shadow-md transition-colors sm:p-6 lg:p-8 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+    <h2 class="mb-5 mt-1 text-center text-2xl font-bold sm:text-3xl">User Registration</h2>
+    <form (submit)="onSubmit()" autocomplete="off" class="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
+    <div>
+      <label for="firstname" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">First Name</label>
+      <input [formField]="applicationUserForm.firstName" type="text" id="firstname" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300" (keydown)="onKeyBoardDown($event)">
+    </div>
+    <div>
+      <label for="lastname" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Last Name</label>
+      <input [formField]="applicationUserForm.lastName" type="text" id="lastname" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300" (keydown)="onKeyBoardDown($event)">
+    </div>
+    <div>
+      <label for="mobileno" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Mobile No</label>
+      <input [formField]="applicationUserForm.phoneNumber" type="text" id="mobileno" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300" (keydown)="onKeyBoardDown($event)">
+    </div>
+    <div>
+      <label for="username" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Username</label>
+      <input [formField]="applicationUserForm.username" type="text" id="username" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300" (keydown)="onKeyBoardDown($event)">
+    </div>
+    <div class="md:col-span-2">
+      <label for="email" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Email</label>
+      <input [formField]="applicationUserForm.email" type="email" id="email" 
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300" 
+        [class]="'w-full rounded-lg border px-3 py-2 transition-all duration-200 focus:outline-none ' + 
+      (applicationUserForm.email().touched() && applicationUserForm.email().invalid() 
+        ? 'border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-700 text-gray-900 dark:text-gray-100' 
+        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-700 text-gray-900 dark:text-gray-100')" 
+        (keydown)="onKeyBoardDown($event)">
+
+  @if (applicationUserForm.email().touched() && applicationUserForm.email().invalid()) {
+    <div class="animate-in fade-in slide-in-from-top-1 flex flex-col gap-1 px-1">
+      @for (error of applicationUserForm.email().errors(); track error.kind) {
+        <p class="text-sm font-medium text-red-600 dark:text-red-300">
+          {{ error.message }}
+        </p>
+      }
+    </div>
+    }
+    </div>
+  
+    <div>
+      <label for="password" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Password</label>
+      <input [formField]="applicationUserForm.password" type="password" id="password"  
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300"
+             [class]="'w-full rounded-lg border px-3 py-2 transition-all duration-200 focus:outline-none ' + 
+      (applicationUserForm.password().touched() && applicationUserForm.password().invalid() 
+        ? 'border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-700 text-gray-900 dark:text-gray-100' 
+        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-700 text-gray-900 dark:text-gray-100')">
+       @if (applicationUserForm.password().touched() && applicationUserForm.password().invalid()) {
+      <div class="error-container">
+        @for (error of applicationUserForm.password().errors(); track error.kind) {
+          <small class="text-sm font-medium text-red-600 dark:text-red-300">{{ error.message }}</small>
+        }
+      </div>
+    }
+    </div>
+    <div>
+      <label for="confirmPassword" class="block text-gray-700 dark:text-gray-300 font-bold mb-2">Confirm Password</label>
+      <input [formField]="applicationUserForm.confirmPassword" type="password" id="confirmPassword"  
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:border-blue-300"
+            [class]="'w-full rounded-lg border px-3 py-2 transition-all duration-200 focus:outline-none ' + 
+      (applicationUserForm.confirmPassword().touched() && applicationUserForm.confirmPassword().invalid() 
+        ? 'border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-700 text-gray-900 dark:text-gray-100' 
+        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-700 text-gray-900 dark:text-gray-100')">
+       @if (applicationUserForm.confirmPassword().touched() && applicationUserForm.confirmPassword().invalid()) {
+      <div class="error-container">
+        @for (error of applicationUserForm.confirmPassword().errors(); track error.kind) {
+          <small class="text-sm font-medium text-red-600 dark:text-red-300">{{ error.message }}</small>
+        }
+      </div>
+    }
+    </div>
+      <div class="md:col-span-2">
+      <button type="submit" [disabled]="applicationUserForm().invalid() || applicationUserForm().submitting()"
+          class="w-full bg-blue-600 dark:bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200">Register
+        @if(applicationUserForm().submitting()) {
+          <span>Processing...</span>
+        }
+        @if(onSuccess) {
+          <span>Success!</span>
+        }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+

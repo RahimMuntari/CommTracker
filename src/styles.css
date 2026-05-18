@@ -1,3 +1,19 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import "tailwindcss";
+
+/* Use .dark class instead of prefers-color-scheme for dark: utilities. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body {
+	min-height: 100%;
+}
+
+html.dark {
+	color-scheme: dark;
+}
+
+html:not(.dark) {
+	color-scheme: light;
+}

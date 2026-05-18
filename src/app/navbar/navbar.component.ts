@@ -1,0 +1,48 @@
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-navbar',
+  imports: [],
+  templateUrl:'./navbar.component.html',
+  styleUrls: ['./navbar.component.css'],
+})
+export class Navbar {
+  isMenuOpen = false;
+  isDarkMode = false;
+
+  constructor() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      this.isDarkMode = true;
+    } else if (savedTheme === 'light') {
+      this.isDarkMode = false;
+    } else {
+      this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    this.applyTheme();
+  }
+
+
+  toggleDarkMode() {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+    this.applyTheme();
+  }
+
+  applyTheme() {
+    const html = document.documentElement;
+
+    if (this.isDarkMode) {
+      html.classList.add('dark');
+      html.style.colorScheme = 'dark';
+    } else {
+      html.classList.remove('dark');
+      html.style.colorScheme = 'light';
+    }
+  }
+
+  toggleMenu() {
+    this.isMenuOpen = !this.isMenuOpen;
+    
+  }
+}
