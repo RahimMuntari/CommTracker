@@ -1,12 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { RouterLink } from "@angular/router";
+import { LogInService } from '../services/log-in-service';
+import { FormField } from "@angular/forms/signals";
 
 @Component({
   selector: 'app-navbar',
-  imports: [],
+  imports: [RouterLink, FormField],
   templateUrl:'./navbar.component.html',
   styleUrls: ['./navbar.component.css'],
 })
 export class Navbar {
+
+  loginService = inject(LogInService);  
+
   isMenuOpen = false;
   isDarkMode = false;
 

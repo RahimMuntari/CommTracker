@@ -1,0 +1,58 @@
+<div class="max-w-xl mx-auto  flex items-center justify-center bg-gray-100 p-4 dark:bg-gray-900 transition-colors">
+  <div class="w-full max-w-md bg-white shadow-lg rounded-xl p-6 space-y-6 transition-colors text-gray-900 dark:text-gray-100 dark:bg-gray-800">
+
+    <h2 class="text-2xl font-semibold text-center  dark:bg-gray-800 dark:transition-colors dark:text-gray-100 text-gray-800">
+      Upload MDR File
+    </h2>
+
+    <form (ngSubmit)="onSubmit()" class="space-y-4">
+
+      <!-- Provider -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Provider</label>
+        <select
+          class="w-full border p-2  dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+          [value]="model.provider()"
+          (change)="model.provider.set($any($event.target).value)"
+        >
+          <option value="mtn">MTN</option>
+          <option value="telecel">Telecel</option>
+        </select>
+      </div>
+
+      <!-- File Type -->
+      <div>
+        <label class="block text-sm font-medium mb-1">File Type</label>
+        <select
+          class="w-full border rounded-lg p-2  dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+          [value]="model.fileType()"
+          (change)="model.fileType.set($any($event.target).value)"
+        >
+          <option value="pdf">PDF</option>
+          <option value="excel">Excel</option>
+        </select>
+      </div>
+
+      <!-- File Input -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Select File</label>
+        <input
+        [attr.accept]="model.fileType() === 'pdf' ? '.pdf' : '.xlsx,.xls'"
+          type="file"
+          class="w-full border rounded-md p-2"
+          (change)="onFileSelected($event)"
+        />
+      </div>
+
+      <!-- Submit -->
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 rounded-md disabled:bg-gray-400"
+        [disabled]="!model.canSubmit()"
+      >
+        Upload
+      </button>
+
+    </form>
+  </div>
+</div>

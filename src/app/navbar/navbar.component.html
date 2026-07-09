@@ -4,18 +4,40 @@
     <div class="flex justify-between items-center h-16">
 
       <!-- Logo -->
-      <a class="shrink-0 flex items-center text-xl font-bold text-black">
+      <a [routerLink]="loginService.currentUser() ? '/home' : '/login'" class="shrink-0 flex items-center text-xl font-bold text-black relative z-50 pointer-events-auto">
         COMM. TRACKER
       </a>
 
       <!-- Desktop Menu -->
       <div class="hidden md:flex space-x-6 items-center">
-        <a class="text-gray-700 hover:text-blue-600">Home</a>
+        <a [routerLink]="'/home'" class="text-gray-700 hover:text-blue-600">Home</a>
         <a class="text-gray-700 hover:text-blue-600">About</a>
-        <a class="text-gray-700 hover:text-blue-600">Call Data Records</a>
-        <a class="text-gray-700 hover:text-blue-600">Mobile Money Records</a>
+        <a [routerLink]="'/uploadcdr'" class="text-gray-700 hover:text-blue-600">Call Data Records</a>
+        <a [routerLink]="'/uploadmdr'" class="text-gray-700 hover:text-blue-600">Mobile Money Records</a>
         <a class="text-gray-700 hover:text-blue-600">Contact</a>
       </div>
+
+      @if (loginService.isLoggedIn()) {
+        <span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          👋 Welcome back! {{loginService.currentUser()}}
+        </span>
+           <button (click)="loginService.logout()" class="text-sm text-red-600 hover:underline font-medium ml-2">
+            Logout
+          </button>
+      } @else {
+        <a routerLink="/login" class="text-blue-600 font-medium hover:underline">Sign In</a>
+      }
+
+        <!-- @if (loginService.currentUser(); as name) {
+          <span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            👋 Welcome, {{ name }}
+          </span>
+          <button (click)="loginService.logout()" class="text-sm text-red-600 hover:underline font-medium ml-2">
+            Logout
+          </button>
+        } @else {
+          <a routerLink="/login" class="text-blue-600 font-medium hover:underline">Sign In</a>
+        } -->
 
        <!-- Dark Mode Toggle -->
       <button 
@@ -42,6 +64,8 @@
     <div class="md:hidden bg-white border-t border-gray-200">
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Home</a>
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">About</a>
+      <a [routerLink]="'/uploadcdr'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Call Data Records</a>
+      <a [routerLink]="'/uploadmdr'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Mobile Money Records</a>
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Services</a>
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Contact</a>
     </div>

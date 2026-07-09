@@ -2,15 +2,13 @@
   <div class="w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 transition-colors text-gray-900 dark:text-gray-100">
     <h2 class="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">Welcome Back!</h2>
 
-    <form (submit)="login(); $event.preventDefault()" class="space-y-5">
+    <form [formRoot]="loginRequestCreateForm" (submit)="login(); $event.preventDefault()" class="space-y-5">
       <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Email</label>
+        <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">User Name</label>
         <input
-          type="email"
+          type="text"
+          [formField]="loginRequestCreateForm.userName"
           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-          [value]="email()"
-          (input)="email.set($any($event.target).value)"
-          required
         />
       </div>
 
@@ -18,10 +16,9 @@
         <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Password</label>
         <input
           type="password"
+          [formField]="loginRequestCreateForm.password"
           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-          [value]="password()"
-          (input)="password.set($any($event.target).value)"
-          required
+          
         />
       </div>
 
@@ -37,6 +34,7 @@
 
       <button
         type="submit"
+        (click)="onSubmit()"
         class="w-full bg-blue-600 dark:bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
         [disabled]="loading()"
       >

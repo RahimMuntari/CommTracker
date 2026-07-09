@@ -1,0 +1,14 @@
+<div class="max-w-xl mx-auto mt-20 p-6 bg-white shadow rounded">
+  <h2 class="text-xl font-bold mb-4">Upload MTN CDR PDF</h2>
+
+  <input type="file"
+         (change)="onFileSelected($event)"
+         class="block w-full mb-4 border p-2 rounded" />
+
+  <button (click)="upload()"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+    Upload
+  </button>
+
+  <p class="mt-4 text-green-600">{{ message }}</p>
+</div>
