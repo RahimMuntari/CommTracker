@@ -4,7 +4,7 @@ import { environment } from '../../environments/environment';
 import { LogInRequest } from '../model/log-in-request';
 import { Observable, tap } from 'rxjs';
 import { LogInResponse } from '../model/log-in-response';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +12,9 @@ import { Router } from '@angular/router';
 export class LogInService {
   
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
+
+
 
   private readonly apiUrl = environment.apiUrl; 
   private readonly loginGenerateEndpoint = `${this.apiUrl}/jwt/generate`;  
@@ -69,7 +72,7 @@ export class LogInService {
    */
   initializeAuth(): void {
     const savedToken = localStorage.getItem('auth_token');
-    
+    console.log('Initializing authentication. Retrieved token from localStorage:', savedToken);
     if (savedToken && !this.isTokenExpired(savedToken)) {
       try {
         const payloadBase64 = savedToken.split('.')[1];
@@ -94,9 +97,12 @@ export class LogInService {
         console.log('Session restored for:', this.currentUser());
       } catch (e) {
         console.error('Initialization failed:', e);
+        console.log('Token is invalid or malformed. Logging out.');
         this.logout();
       }
     } else {
+     
+      console.log('No valid token found during initialization. Logging out.');
       this.logout();
     }
   }
