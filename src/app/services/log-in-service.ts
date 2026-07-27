@@ -12,7 +12,6 @@ import { Router } from '@angular/router';
 export class LogInService {
   
   private http = inject(HttpClient);
-
   private readonly apiUrl = environment.apiUrl; 
   private readonly loginGenerateEndpoint = `${this.apiUrl}/jwt/generate`;  
   
@@ -68,8 +67,15 @@ export class LogInService {
    * Reads storage on application startup. Restores session and sets up timers.
    */
   initializeAuth(): void {
+    if (this.redirectToResetPasswordIfValidLink()) {
+      this.currentUser.set(null);
+      this.token.set(null);
+      localStorage.removeItem('auth_token');
+      return;
+    }
+
     const savedToken = localStorage.getItem('auth_token');
-    
+    console.log('Initializing authentication. Retrieved token from localStorage:', savedToken);
     if (savedToken && !this.isTokenExpired(savedToken)) {
       try {
         const payloadBase64 = savedToken.split('.')[1];
@@ -94,11 +100,58 @@ export class LogInService {
         console.log('Session restored for:', this.currentUser());
       } catch (e) {
         console.error('Initialization failed:', e);
+        console.log('Token is invalid or malformed. Logging out.');
         this.logout();
       }
     } else {
-      this.logout();
+      
+      console.log('No valid token found during initialization. Logging out.');
+      this.currentUser.set(null);
+      this.token.set(null);
+      localStorage.removeItem('auth_token');
     }
+  }
+
+  private redirectToResetPasswordIfValidLink(): boolean {
+    const currentUrlTree = this.router.parseUrl(this.router.url || '/');
+    const email = this.normalizeQueryValue(currentUrlTree.queryParams['email']);
+    const token = this.normalizeQueryValue(currentUrlTree.queryParams['token']);
+
+    if (!email || !token) {
+      return false;
+    }
+
+    if (!this.isValidEmail(email) || !this.isValidResetToken(token)) {
+      console.warn('Reset password route params are not valid.');
+      return false;
+    }
+
+    const currentPrimaryPath = currentUrlTree.root.children['primary']?.segments.map((segment) => segment.path).join('/');
+    if (currentPrimaryPath === 'reset-password') {
+      return true;
+    }
+
+    this.router.navigate(['/reset-password'], {
+      queryParams: { email, token }
+    });
+    return true;
+  }
+
+  private normalizeQueryValue(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private isValidResetToken(token: string): boolean {
+    return token.length >= 16 && !/\s/.test(token);
   }
 
   /**
