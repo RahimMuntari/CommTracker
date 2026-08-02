@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { DefaultUrlSerializer, Router } from '@angular/router';
+import { of } from 'rxjs';
 import { LogInService } from './log-in-service';
 
 describe('LogInService', () => {
@@ -70,6 +71,16 @@ describe('LogInService', () => {
 
     service.initializeAuth();
 
+    expect(navigateCalls.length).toBe(0);
+  });
+
+  it('should read reset-link params from the current router URL on refresh', () => {
+    currentUrl = '/reset-password?email=user@example.com&token=1234567890abcdef';
+    spyOn(service, 'validateResetToken').and.returnValue(of(true));
+
+    service.initializeAuth();
+
+    expect(service.validateResetToken).toHaveBeenCalledWith('user@example.com', '1234567890abcdef');
     expect(navigateCalls.length).toBe(0);
   });
 });

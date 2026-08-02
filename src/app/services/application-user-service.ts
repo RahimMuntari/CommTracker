@@ -1,10 +1,15 @@
 import { inject, Injectable, resource, signal, Signal } from '@angular/core';
 import { ApplicationUser } from '../model/application-user';
-import { HttpClient, httpResource } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse, httpResource } from '@angular/common/http';
+import { catchError, Observable, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { rxResource } from '@angular/core/rxjs-interop';
 
+export interface UpdatePasswordRequest {
+  userId: string;
+  newPassword: string;
+}
+  
 @Injectable({
   providedIn: 'root',
 })
@@ -79,7 +84,21 @@ export class ApplicationUserService {
     return this.http.get<ApplicationUser>(`${this.apiUrl}/applicationuser/${userId}`);
   }
 
+  updateApplicationUserPassword(userId: string, newPassword: string) : Observable<ApplicationUser> {
+    // const payload = {
+    //   password: newPassword
+    // };
 
+    // return this.http.put<ApplicationUser>(`${this.apiUrl}/applicationuser/${userId}/updatepassword`, payload);
+
+      const payload: UpdatePasswordRequest = { userId, newPassword };
+    console.log('Updating password for userId:', userId, 'with new password:', newPassword);  
+    // Depending on your minimal API route configuration, adjust the endpoint URL structure:
+    // This assumes your route handles inputs via a POST body or query params.
+    return this.http.put<ApplicationUser>(`${this.apiUrl}/applicationuser/updatepassword`, payload).pipe(
+      catchError(this.handleError)
+    );
+  }
 
   createApplicationUserResource(userDataSignal: Signal<ApplicationUser>) {
     
@@ -95,4 +114,18 @@ export class ApplicationUserService {
       };  
     });
   }
+
+   private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'An unknown database or server error occurred.';
+    
+    // Handles the custom string messages returned inside your backend TypedResults.NotFound("...")
+    if (error.error && typeof error.error === 'string') {
+      errorMessage = error.error;
+    } else if (error.error?.message) {
+      errorMessage = error.error.message;
+    }
+    
+    return throwError(() => new Error(errorMessage));
+  }
+
 }
