@@ -1,13 +1,30 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { MtnCallRecord } from '../model/mtn-call-record';
+import { MtnSubscriberInfo } from '../model/mtn-subscriber-info';
+import { environment } from '../../environments/environment.development';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MtnCallRecordService {
-   private api = 'http://localhost:5000/upload';
+  private api = `${environment.apiUrl}/mtn`;
 
   constructor(private http: HttpClient) {}
+
+  getAllSubscriberInfos() {
+    return httpResource<MtnSubscriberInfo[]>(() => ({
+      url: `${this.api}/subscriber-info`,
+      method: 'GET',
+    }));
+  }
+
+  getAllCallRecords() {
+    return httpResource<MtnCallRecord[]>(() => ({
+      url: `${this.api}/calls`,
+      method: 'GET',
+    }));
+  }
 
   upload(file: File) {
     const form = new FormData();

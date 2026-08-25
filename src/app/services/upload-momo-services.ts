@@ -2,12 +2,15 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FileType, ProviderType } from '../mdr-upload-form-model';
+import { environment } from '../../environments/environment.development';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UploadMomoServices {
-  private baseUrl = '/api/mdr/upload';
+  private baseUrl = '/api/cdr/uploadmomo';
+
+   private api = `${environment.apiUrl}`;
 
   constructor(private http: HttpClient) {}
 
@@ -17,6 +20,6 @@ export class UploadMomoServices {
 
     const params = { provider, fileType };
 
-    return this.http.post<any>(this.baseUrl, formData, { params });
+    return this.http.post<any>(this.api + "/cdr/uploadmomo", formData, { params });
   }
 }

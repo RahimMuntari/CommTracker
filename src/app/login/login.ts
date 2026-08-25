@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { LogInService } from '../services/log-in-service';
 import { createInitialLogInRequestSignal, createLogInRequestForm } from '../model/log-in-request';
@@ -23,35 +23,35 @@ export class Login {
 
   protected errorMessage = signal<string | null>(null);
   protected validationErrors = signal<{ [key: string]: string[] } | null>(null);
+  protected validationMessages = computed(() => {
+    const errors = this.validationErrors();
+    if (!errors) {
+      return [];
+    }
+
+    return Object.values(errors)
+      .flat()
+      .filter((message): message is string => Boolean(message));
+  });
 
 
   email = signal('');
   password = signal('');
   loading = signal(false);
 
-  login() {
-    this.loading.set(true);
-
-    setTimeout(() => {
-      this.loading.set(false);
-      // this.router.navigate(['/dashboard']);
-    }, 1200);
-  }
-
    onSuccess: boolean = false;
 
  onSubmit() {
+  this.errorMessage.set(null);
+  this.validationErrors.set(null);
   console.log('Submitting form with data:', this.loginRequestCreateForm().value()); 
-    submit(this.loginRequestCreateForm, async (formData) => {
-      const loginRequest = {
-        userName: formData.userName,
-        password: formData.password, 
-      };
+    submit(this.loginRequestCreateForm, async () => {
+      this.loading.set(true);
       
       console.log('Submitting form with data:', this.loginRequestCreateForm().value());
       try{
           this.onSuccess = false;  
-          const resultFirstValue = await firstValueFrom(this.loginService.loginUser (this.loginRequestCreateForm().value()));
+          const resultFirstValue = await firstValueFrom(this.loginService.loginUser(this.loginRequestCreateForm().value()));
           this.loginResponseModel.set(resultFirstValue);
           console.log('Login successful:', resultFirstValue); 
           console.log('*Token*:', resultFirstValue.token);
@@ -62,7 +62,7 @@ export class Login {
           // 2. Run initialization to extract the 'userName' and start the auto-logout timer
           this.loginService.initializeAuth();
 
-          this.router.navigate(['/home']); 
+          this.router.navigate(['/dashboard']); 
           this.loginRequestCreateForm().reset();
           this.onSuccess = true;  
         
@@ -74,14 +74,19 @@ export class Login {
               // Catch exceptions and safely map API ValidationProblem (400) or NotFound (404)
               if (err?.status === 400 && err.error?.errors) {
                   this.validationErrors.set(err.error.errors); 
-              } else {
+              } else if (err?.status === 404) {
+                  this.validationErrors.set({ general: ['Login Failed:'] });
+              }
+              else {
                 this.errorMessage.set(err.error || 'An unexpected error occurred.');
               }
               console.error('Error creating user:', err.message);
+              } else {
+                this.errorMessage.set('An unexpected error occurred.');
           }
       }
       finally{
-
+          this.loading.set(false);
       }
       
     });

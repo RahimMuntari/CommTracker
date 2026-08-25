@@ -221,8 +221,12 @@ export class LogInService {
    * Evaluates if the current browser session has a valid, active login state.
    */
   isLoggedIn(): boolean {
+    if (!this.token() && localStorage.getItem('auth_token')) {
+      this.initializeAuth();
+    }
+
     const activeToken = this.token() || localStorage.getItem('auth_token');
-    
+
     // 1. If no token exists, the user is definitely not logged in
     if (!activeToken) {
       return false;

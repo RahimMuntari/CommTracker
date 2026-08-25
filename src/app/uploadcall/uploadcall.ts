@@ -112,6 +112,8 @@ onFileSelected(event: Event) {
    upload() {
     const value = this.form();
     if (!value.provider || !value.fileType || !value.file) return;
+    this.message.set('');
+    this.uploading.set(true);
     console.log('Uploading with values:', value);
     const formData = new FormData();
     formData.append('provider', value.provider);

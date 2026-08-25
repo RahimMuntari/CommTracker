@@ -24,11 +24,7 @@ export class Uploadmomo {
     const file = this.model.file();
     if (!file) return;
 
-    this.service.uploadMdr(
-      this.model.provider(),
-      this.model.fileType(),
-      file
-    ).subscribe({
+    this.service.uploadMdr(this.model.provider(),this.model.fileType(),file).subscribe({
       next: res => console.log('Uploaded', res),
       error: err => console.error(err)
     });
