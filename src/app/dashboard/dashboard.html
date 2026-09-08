@@ -31,10 +31,22 @@
     <div class="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm font-medium uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Subscriber Intelligence</p>
-        <h1 class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ selectedProviderLabel }} subscriber dashboard</h1>
+        <h1 class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ selectedProviderLabel }} {{ selectedDisplayModeLabel | lowercase }}</h1>
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label class="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-200">
+          <span>Display</span>
+          <select
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            [value]="displayMode()"
+            (change)="onDisplayModeChange($event)"
+          >
+            <option value="calls">Call Records</option>
+            <option value="momo">Momo Transactions</option>
+          </select>
+        </label>
+
         <label class="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-200">
           <span>Provider</span>
           <select
@@ -48,219 +60,397 @@
         </label>
 
         <label class="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-200">
-          <span>Subscriber</span>
+          <span>{{ displayMode() === 'calls' ? 'Subscriber' : 'Account' }}</span>
           <select
             class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
             [value]="selectedSubscriberId()"
             (change)="onSubscriberChange($event)"
           >
             @for (subscriber of subscribers(); track subscriber.subscriberKey) {
-              <option [value]="subscriber.subscriberKey">{{ subscriber.fullName }} · {{ subscriber.subscriberNumber }}</option>
+              <option [value]="subscriber.subscriberKey">
+                @if (displayMode() === 'momo' && dataProvider() === 'telecel') {
+                  {{ subscriber.fullName }} (MSISDN: {{ subscriber.subscriberNumber }})
+                } @else if (displayMode() === 'momo' && dataProvider() === 'mtn') {
+                  {{ subscriber.fullName }} (Customer No: {{ subscriber.subscriberNumber }})
+                } @else {
+                  {{ subscriber.fullName }} · {{ subscriber.subscriberNumber }}
+                }
+              </option>
             }
           </select>
         </label>
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
-      <article class="rounded-2xl bg-linear-to-br from-blue-600 to-blue-500 p-5 text-white shadow-sm">
-        <p class="text-sm text-blue-100">Total calls</p>
-        <h2 class="mt-3 text-3xl font-bold">{{ totalCalls() }}</h2>
-        <p class="mt-2 text-sm text-blue-100">Across recent movement events</p>
-      </article>
-
-      <article class="rounded-2xl bg-linear-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
-        <p class="text-sm text-emerald-100">Call duration</p>
-        <h2 class="mt-3 text-3xl font-bold">{{ totalMinutes() | number: '1.0-0' }} min</h2>
-        <p class="mt-2 text-sm text-emerald-100">Tracked across the selected subscriber</p>
-      </article>
-
-      <article class="rounded-2xl bg-linear-to-br from-violet-600 to-violet-500 p-5 text-white shadow-sm">
-        <p class="text-sm text-violet-100">Top site</p>
-        <h2 class="mt-3 text-xl font-bold">{{ activeCell().name }}</h2>
-        <p class="mt-2 text-sm text-violet-100">{{ activeCell().count }} events · {{ activeCell().totalDuration / 60 | number: '1.0-0' }} min</p>
-        <p class="mt-2 text-xs text-violet-100">Lat {{ activeCell().latitude | number: '1.4-4' }} · Lng {{ activeCell().longitude | number: '1.4-4' }}</p>
-      </article>
-
-      @if (dataProvider() === 'telecel') {
-        <article class="rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 p-5 text-white shadow-sm">
-          <p class="text-sm text-amber-100">Telecel split</p>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <p class="text-xs uppercase tracking-[0.2em] text-amber-100">Voice</p>
-              <h2 class="mt-2 text-2xl font-bold">{{ telecelVoiceSummary().count }}</h2>
-              <p class="text-xs text-amber-100">{{ telecelVoiceSummary().totalMinutes | number: '1.0-0' }} min</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-[0.2em] text-amber-100">SMS</p>
-              <h2 class="mt-2 text-2xl font-bold">{{ telecelSmsSummary().count }}</h2>
-              <p class="text-xs text-amber-100">{{ telecelSmsSummary().totalMinutes | number: '1.0-0' }} min</p>
-            </div>
-          </div>
+    @if (displayMode() === 'calls') {
+      <!-- Call Records Display Section -->
+      <div class="grid gap-4 md:grid-cols-3">
+        <article class="rounded-2xl bg-linear-to-br from-blue-600 to-blue-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-blue-100">Total calls</p>
+          <h2 class="mt-3 text-3xl font-bold">{{ totalCalls() }}</h2>
+          <p class="mt-2 text-sm text-blue-100">Across recent movement events</p>
         </article>
-      } @else {
-        <article class="rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 p-5 text-white shadow-sm">
-          <p class="text-sm text-amber-100">MTN split</p>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <p class="text-xs uppercase tracking-[0.2em] text-amber-100">Voice</p>
-              <h2 class="mt-2 text-2xl font-bold">{{ mtnVoiceSummary().count }}</h2>
-              <p class="text-xs text-amber-100">{{ mtnVoiceSummary().totalMinutes | number: '1.0-0' }} min</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-[0.2em] text-amber-100">SMS</p>
-              <h2 class="mt-2 text-2xl font-bold">{{ mtnSmsSummary().count }}</h2>
-              <p class="text-xs text-amber-100">{{ mtnSmsSummary().totalMinutes | number: '1.0-0' }} min</p>
-            </div>
-          </div>
+
+        <article class="rounded-2xl bg-linear-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
+          <p class="text-sm text-emerald-100">Call duration</p>
+          <h2 class="mt-3 text-3xl font-bold">{{ totalMinutes() | number: '1.0-0' }} min</h2>
+          <p class="mt-2 text-sm text-emerald-100">Tracked across the selected subscriber</p>
         </article>
-      }
-    </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
-      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Most frequent communicator</p>
-        <h2 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white">{{ mostFrequentCommunicator().number }}</h2>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {{ mostFrequentCommunicator().callCount }} calls with the selected subscriber
-        </p>
-      </article>
+        <article class="rounded-2xl bg-linear-to-br from-violet-600 to-violet-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-violet-100">Top site</p>
+          <h2 class="mt-3 text-xl font-bold">{{ activeCell().name }}</h2>
+          <p class="mt-2 text-sm text-violet-100">{{ activeCell().count }} events · {{ activeCell().totalDuration / 60 | number: '1.0-0' }} min</p>
+          <p class="mt-2 text-xs text-violet-100">Lat {{ activeCell().latitude | number: '1.4-4' }} · Lng {{ activeCell().longitude | number: '1.4-4' }}</p>
+        </article>
 
-      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Longest time with subscriber</p>
-        <h2 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white">{{ longestDurationCommunicator().number }}</h2>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {{ longestDurationCommunicator().totalDurationSeconds / 60 | number: '1.0-0' }} min total talk time
-        </p>
-      </article>
-    </div>
-
-    <div class="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-      <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-        <div class="mb-4 flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Movement map</p>
-            <h3 class="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Subscriber route and cell coverage</h3>
-          </div>
-          <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
-            {{ currentSubscriber().region }}
-          </span>
-        </div>
-
-        <app-subscriber-map [cells]="mapCells()" [records]="mapPoints()" />
+        @if (dataProvider() === 'telecel') {
+          <article class="rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 p-5 text-white shadow-sm">
+            <p class="text-sm text-amber-100">Telecel split</p>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-amber-100">Voice</p>
+                <h2 class="mt-2 text-2xl font-bold">{{ telecelVoiceSummary().count }}</h2>
+                <p class="text-xs text-amber-100">{{ telecelVoiceSummary().totalMinutes | number: '1.0-0' }} min</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-amber-100">SMS</p>
+                <h2 class="mt-2 text-2xl font-bold">{{ telecelSmsSummary().count }}</h2>
+                <p class="text-xs text-amber-100">{{ telecelSmsSummary().totalMinutes | number: '1.0-0' }} min</p>
+              </div>
+            </div>
+          </article>
+        } @else {
+          <article class="rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 p-5 text-white shadow-sm">
+            <p class="text-sm text-amber-100">MTN split</p>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-amber-100">Voice</p>
+                <h2 class="mt-2 text-2xl font-bold">{{ mtnVoiceSummary().count }}</h2>
+                <p class="text-xs text-amber-100">{{ mtnVoiceSummary().totalMinutes | number: '1.0-0' }} min</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-amber-100">SMS</p>
+                <h2 class="mt-2 text-2xl font-bold">{{ mtnSmsSummary().count }}</h2>
+                <p class="text-xs text-amber-100">{{ mtnSmsSummary().totalMinutes | number: '1.0-0' }} min</p>
+              </div>
+            </div>
+          </article>
+        }
       </div>
 
-      <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-        <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Cell site intensity</p>
-        <h3 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Heatmap by cell</h3>
+      <div class="grid gap-4 md:grid-cols-2">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Most frequent communicator</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white">{{ mostFrequentCommunicator().number }}</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {{ mostFrequentCommunicator().callCount }} calls with the selected subscriber
+          </p>
+        </article>
 
-        <div class="mt-4 space-y-3">
-          @for (cell of topCells(); track cell.name) {
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-700/60">
-              <div class="mb-2 flex items-center justify-between gap-3">
-                <span class="font-medium text-slate-800 dark:text-slate-100">{{ cell.name }}</span>
-                <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">{{ cell.count }} calls</span>
-              </div>
-              <div class="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-300">
-                Lat {{ cell.latitude | number: '1.4-4' }} · Lng {{ cell.longitude | number: '1.4-4' }}
-              </div>
-              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
-                <div
-                  class="h-full rounded-full bg-linear-to-r from-blue-500 to-cyan-400"
-                  [style.width.%]="getCellIntensityWidth(cell.intensity)"
-                ></div>
-              </div>
-              <div class="mt-2 flex justify-between text-xs text-slate-500 dark:text-slate-300">
-                <span>{{ cell.totalDuration / 60 | number: '1.0-0' }} min</span>
-                <span>{{ cell.intensity * 100 | number: '1.0-0' }}%</span>
-              </div>
-            </div>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Longest time with subscriber</p>
+          <h2 class="mt-3 text-2xl font-bold text-slate-900 dark:text-white">{{ longestDurationCommunicator().number }}</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {{ longestDurationCommunicator().totalDurationSeconds / 60 | number: '1.0-0' }} min total talk time
+          </p>
+        </article>
+      </div>
+    } @else {
+      <!-- Momo Transactions Display Section -->
+      <div class="grid gap-4 md:grid-cols-4">
+        <article class="rounded-2xl bg-linear-to-br from-green-600 to-green-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-green-100">Total transactions</p>
+          <h2 class="mt-3 text-3xl font-bold">{{ momoTransactionSummary().totalTransactions }}</h2>
+          <p class="mt-2 text-sm text-green-100">Financial operations</p>
+        </article>
+
+        <article class="rounded-2xl bg-linear-to-br from-blue-600 to-blue-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-blue-100">Total paid in</p>
+          <h2 class="mt-3 text-2xl font-bold">{{ momoTransactionSummary().totalPaidIn | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+          <p class="mt-2 text-sm text-blue-100">Deposits received</p>
+        </article>
+
+        <article class="rounded-2xl bg-linear-to-br from-orange-600 to-orange-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-orange-100">Total withdrawn</p>
+          <h2 class="mt-3 text-2xl font-bold">{{ momoTransactionSummary().totalWithdrawn | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+          <p class="mt-2 text-sm text-orange-100">Amount sent out</p>
+        </article>
+
+        <article class="rounded-2xl bg-linear-to-br from-violet-600 to-violet-500 p-5 text-white shadow-sm">
+          <p class="text-sm text-violet-100">Current balance</p>
+          <h2 class="mt-3 text-2xl font-bold">{{ momoTransactionSummary().currentBalance | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+          <p class="mt-2 text-sm text-violet-100">Account balance</p>
+        </article>
+      </div>
+
+      <div class="grid gap-4" [class.md:grid-cols-3]="dataProvider() !== 'mtn'" [class.md:grid-cols-4]="dataProvider() === 'mtn'">
+        <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Highest paid in</p>
+          @if (highestPaidInTransaction(); as highestPaidIn) {
+            <h2 class="mt-3 text-2xl font-bold text-emerald-900 dark:text-emerald-100">{{ highestPaidIn.paidIn | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+            <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">{{ highestPaidIn.transactionType }} · {{ highestPaidIn.dateTime | date: 'short' }}</p>
+            @if (dataProvider() === 'mtn') {
+              <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">FromAccountName: {{ highestPaidIn.fromAccountName || 'N/A' }}</p>
+              <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">FromPhoneNumber: {{ highestPaidIn.fromPhoneNumber || 'N/A' }}</p>
+            } @else {
+              <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">{{ highestPaidIn.details || highestPaidIn.oppositeParty || 'No details' }}</p>
+            }
+          } @else {
+            <h2 class="mt-3 text-2xl font-bold text-emerald-900 dark:text-emerald-100">{{ 0 | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+            <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">No paid-in transaction found</p>
           }
-        </div>
-      </div>
-    </div>
+        </article>
 
-    <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-      <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-        <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Subscriber profile</p>
-        <div class="mt-4 space-y-4 text-sm text-slate-700 dark:text-slate-200">
-          <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
-            <span>Full name</span>
-            <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().fullName }}</span>
-          </div>
-          <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
-            <span>MSISDN</span>
-            <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().subscriberNumber }}</span>
-          </div>
-          <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
-            <span>Region</span>
-            <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().region }}</span>
-          </div>
-          <div class="flex justify-between gap-3 pb-1">
-            <span>Home cell</span>
-            <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().homeCell }}</span>
-          </div>
-        </div>
+        <article class="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm dark:border-orange-900/60 dark:bg-orange-950/30">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-orange-700 dark:text-orange-300">Highest withdrawn</p>
+          @if (highestWithdrawnTransaction(); as highestWithdrawn) {
+            <h2 class="mt-3 text-2xl font-bold text-orange-900 dark:text-orange-100">{{ highestWithdrawn.withdrawn | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+            <p class="mt-2 text-sm text-orange-800 dark:text-orange-200">{{ highestWithdrawn.transactionType }} · {{ highestWithdrawn.dateTime | date: 'short' }}</p>
+            <p class="mt-1 text-xs text-orange-700 dark:text-orange-300">{{ highestWithdrawn.details || highestWithdrawn.oppositeParty || 'No details' }}</p>
+          } @else {
+            <h2 class="mt-3 text-2xl font-bold text-orange-900 dark:text-orange-100">{{ 0 | currency: currencyCode : 'symbol' : '1.2-2' }}</h2>
+            <p class="mt-2 text-sm text-orange-800 dark:text-orange-200">No withdrawn transaction found</p>
+          }
+        </article>
+
+        <article class="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm dark:border-sky-900/60 dark:bg-sky-950/30">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-sky-700 dark:text-sky-300">Highest frequency activity</p>
+          <h2 class="mt-3 text-2xl font-bold text-sky-900 dark:text-sky-100">{{ highestFrequencyMomoActivity().frequency }}</h2>
+          <p class="mt-2 text-sm text-sky-800 dark:text-sky-200">{{ highestFrequencyMomoActivity().details }}</p>
+          <p class="mt-2 text-xs text-sky-700 dark:text-sky-300">
+            Paid in: {{ highestFrequencyMomoActivity().totalPaidIn | currency: currencyCode : 'symbol' : '1.2-2' }} · Withdrawn: {{ highestFrequencyMomoActivity().totalWithdrawn | currency: currencyCode : 'symbol' : '1.2-2' }}
+          </p>
+        </article>
+
+        @if (dataProvider() === 'mtn') {
+          <article class="rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30">
+            <p class="text-sm font-medium uppercase tracking-[0.2em] text-rose-700 dark:text-rose-300">Unclassified MTN types</p>
+            <h2 class="mt-3 text-2xl font-bold text-rose-900 dark:text-rose-100">{{ unclassifiedMtnTypeSummary().count }}</h2>
+            <p class="mt-2 text-xs text-rose-700 dark:text-rose-300">
+              {{ unclassifiedMtnTypeSummary().topTypes.length > 0 ? unclassifiedMtnTypeSummary().topTypes.join(', ') : 'No unclassified types' }}
+            </p>
+          </article>
+        }
       </div>
 
       <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Movement timeline</p>
+          <div>
+            <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Transaction history</p>
+            <h3 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Momo account activity</h3>
+          </div>
           <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold dark:border-slate-600 dark:bg-slate-700">
             <button
               type="button"
               class="rounded-full px-3 py-1 transition-colors"
-              [class.bg-blue-600]="timelineSortOrder() === 'asc'"
-              [class.text-white]="timelineSortOrder() === 'asc'"
-              [class.text-slate-600]="timelineSortOrder() !== 'asc'"
-              [class.dark:text-slate-200]="timelineSortOrder() !== 'asc'"
-              (click)="setTimelineSortOrder('asc')"
+              [class.bg-blue-600]="momoSortOrder() === 'desc'"
+              [class.text-white]="momoSortOrder() === 'desc'"
+              [class.text-slate-600]="momoSortOrder() !== 'desc'"
+              [class.dark:text-slate-200]="momoSortOrder() !== 'desc'"
+              (click)="setMomoSortOrder('desc')"
             >
-              Ascending
+              Newest
             </button>
             <button
               type="button"
               class="rounded-full px-3 py-1 transition-colors"
-              [class.bg-blue-600]="timelineSortOrder() === 'desc'"
-              [class.text-white]="timelineSortOrder() === 'desc'"
-              [class.text-slate-600]="timelineSortOrder() !== 'desc'"
-              [class.dark:text-slate-200]="timelineSortOrder() !== 'desc'"
-              (click)="setTimelineSortOrder('desc')"
+              [class.bg-blue-600]="momoSortOrder() === 'asc'"
+              [class.text-white]="momoSortOrder() === 'asc'"
+              [class.text-slate-600]="momoSortOrder() !== 'asc'"
+              [class.dark:text-slate-200]="momoSortOrder() !== 'asc'"
+              (click)="setMomoSortOrder('asc')"
             >
-              Descending
+              Oldest
             </button>
           </div>
         </div>
-        <div class="mt-4 space-y-5">
-          @for (day of movementTimeline(); track day.dateKey) {
-            <div class="relative pl-8">
-              <div class="absolute left-0 top-0 h-full w-px bg-slate-200 dark:bg-slate-600"></div>
-              <div class="absolute -left-1.25 top-2 h-3 w-3 rounded-full bg-blue-500"></div>
-              <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">{{ day.day }}</h4>
 
-              <div class="space-y-3">
-                @for (event of day.events; track event.hour) {
-                  <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-700/60">
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-2">
-                        <span class="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950"></span>
-                        <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ event.hour }}</span>
-                      </div>
-                      <span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
-                        {{ event.count }} events
-                      </span>
-                    </div>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ event.cellName }}</p>
-                    <p class="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                      Lat {{ event.latitude | number: '1.4-4' }} · Lng {{ event.longitude | number: '1.4-4' }}
-                    </p>
-                  </div>
-                }
+        <div class="mt-4 space-y-3">
+          @for (transaction of filteredMomoTransactions(); track transaction.id) {
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-700/60">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ transaction.transactionType }}</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ transaction.receiptNo || 'No receipt' }}</span>
+                </div>
+                <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                  {{ transaction.dateTime | date: 'short' }}
+                </span>
               </div>
+
+              <div class="grid gap-3 sm:grid-cols-3">
+                <div class="rounded-lg bg-green-50 p-2 dark:bg-green-950/30">
+                  <p class="text-xs font-medium uppercase tracking-wide text-green-700 dark:text-green-300">Paid in</p>
+                  <h4 class="mt-1 text-lg font-bold text-green-900 dark:text-green-100">{{ transaction.paidIn | currency: currencyCode : 'symbol' : '1.2-2' }}</h4>
+                </div>
+
+                <div class="rounded-lg bg-orange-50 p-2 dark:bg-orange-950/30">
+                  <p class="text-xs font-medium uppercase tracking-wide text-orange-700 dark:text-orange-300">Withdrawn</p>
+                  <h4 class="mt-1 text-lg font-bold text-orange-900 dark:text-orange-100">{{ transaction.withdrawn | currency: currencyCode : 'symbol' : '1.2-2' }}</h4>
+                </div>
+
+                <div class="rounded-lg bg-violet-50 p-2 dark:bg-violet-950/30">
+                  <p class="text-xs font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">Balance</p>
+                  <h4 class="mt-1 text-lg font-bold text-violet-900 dark:text-violet-100">{{ transaction.balance | currency: currencyCode : 'symbol' : '1.2-2' }}</h4>
+                </div>
+              </div>
+
+              @if (transaction.oppositeParty || transaction.details || transaction.toAccountName || transaction.toMsisdn) {
+                <div class="mt-3 flex flex-col gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  @if (dataProvider() === 'mtn') {
+                    <p><span class="font-medium">ToAccountName:</span> {{ transaction.toAccountName || 'N/A' }}</p>
+                    <p><span class="font-medium">ToMsisdn:</span> {{ transaction.toMsisdn || 'N/A' }}</p>
+                  } @else {
+                    @if (transaction.oppositeParty) {
+                      <p><span class="font-medium">Party:</span> {{ transaction.oppositeParty }}</p>
+                    }
+                    @if (transaction.details) {
+                      <p><span class="font-medium">Details:</span> {{ transaction.details }}</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (filteredMomoTransactions().length === 0) {
+            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center dark:border-slate-600 dark:bg-slate-700/30">
+              <p class="text-sm text-slate-500 dark:text-slate-400">No momo transactions found for the selected account</p>
             </div>
           }
         </div>
       </div>
-    </div>
+    }
+
+    @if (displayMode() === 'calls') {
+      <div class="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Movement map</p>
+              <h3 class="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Subscriber route and cell coverage</h3>
+            </div>
+            <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
+              {{ currentSubscriber().region }}
+            </span>
+          </div>
+
+          <app-subscriber-map [cells]="mapCells()" [records]="mapPoints()" />
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Cell site intensity</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Heatmap by cell</h3>
+
+          <div class="mt-4 space-y-3">
+            @for (cell of topCells(); track cell.name) {
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-700/60">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <span class="font-medium text-slate-800 dark:text-slate-100">{{ cell.name }}</span>
+                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">{{ cell.count }} calls</span>
+                </div>
+                <div class="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-300">
+                  Lat {{ cell.latitude | number: '1.4-4' }} · Lng {{ cell.longitude | number: '1.4-4' }}
+                </div>
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
+                  <div
+                    class="h-full rounded-full bg-linear-to-r from-blue-500 to-cyan-400"
+                    [style.width.%]="getCellIntensityWidth(cell.intensity)"
+                  ></div>
+                </div>
+                <div class="mt-2 flex justify-between text-xs text-slate-500 dark:text-slate-300">
+                  <span>{{ cell.totalDuration / 60 | number: '1.0-0' }} min</span>
+                  <span>{{ cell.intensity * 100 | number: '1.0-0' }}%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Subscriber profile</p>
+          <div class="mt-4 space-y-4 text-sm text-slate-700 dark:text-slate-200">
+            <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
+              <span>Full name</span>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().fullName }}</span>
+            </div>
+            <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
+              <span>MSISDN</span>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().subscriberNumber }}</span>
+            </div>
+            <div class="flex justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-600">
+              <span>Region</span>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().region }}</span>
+            </div>
+            <div class="flex justify-between gap-3 pb-1">
+              <span>Home cell</span>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ currentSubscriber().homeCell }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Movement timeline</p>
+            <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold dark:border-slate-600 dark:bg-slate-700">
+              <button
+                type="button"
+                class="rounded-full px-3 py-1 transition-colors"
+                [class.bg-blue-600]="timelineSortOrder() === 'asc'"
+                [class.text-white]="timelineSortOrder() === 'asc'"
+                [class.text-slate-600]="timelineSortOrder() !== 'asc'"
+                [class.dark:text-slate-200]="timelineSortOrder() !== 'asc'"
+                (click)="setTimelineSortOrder('asc')"
+              >
+                Ascending
+              </button>
+              <button
+                type="button"
+                class="rounded-full px-3 py-1 transition-colors"
+                [class.bg-blue-600]="timelineSortOrder() === 'desc'"
+                [class.text-white]="timelineSortOrder() === 'desc'"
+                [class.text-slate-600]="timelineSortOrder() !== 'desc'"
+                [class.dark:text-slate-200]="timelineSortOrder() !== 'desc'"
+                (click)="setTimelineSortOrder('desc')"
+              >
+                Descending
+              </button>
+            </div>
+          </div>
+          <div class="mt-4 space-y-5">
+            @for (day of movementTimeline(); track day.dateKey) {
+              <div class="relative pl-8">
+                <div class="absolute left-0 top-0 h-full w-px bg-slate-200 dark:bg-slate-600"></div>
+                <div class="absolute -left-1.25 top-2 h-3 w-3 rounded-full bg-blue-500"></div>
+                <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">{{ day.day }}</h4>
+
+                <div class="space-y-3">
+                  @for (event of day.events; track event.hour) {
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-700/60">
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950"></span>
+                          <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ event.hour }}</span>
+                        </div>
+                        <span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
+                          {{ event.count }} events
+                        </span>
+                      </div>
+                      <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ event.cellName }}</p>
+                      <p class="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        Lat {{ event.latitude | number: '1.4-4' }} · Lng {{ event.longitude | number: '1.4-4' }}
+                      </p>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
   </section>
 }

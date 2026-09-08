@@ -1,14 +1,22 @@
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, LowerCasePipe, DatePipe, CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { MtnCallRecord } from '../model/mtn-call-record';
 import { MtnSubscriberInfo } from '../model/mtn-subscriber-info';
+import { MtnMomoStatement } from '../model/mtn-momo-statement';
+import { MtnMomoTransaction } from '../model/mtn-momo-transaction';
 import { TelecelCallRecord } from '../model/telecel-call-record';
 import { TelecelSubscriberInfo } from '../model/telecel-subscriber-info';
+import { TelecelMomoStatement } from '../model/telecel-momo-statement';
+import { TelecelMomoTransaction } from '../model/telecel-momo-transaction';
 import { MtnCallRecordService } from '../services/mtn-call-record-service';
 import { TelecelCall } from '../services/telecel-call';
+import { MtnMomo } from '../services/mtn-momo';
+import { TelecelMomo } from '../services/telecel-momo';
 import { SubscriberMap } from './subscriber-map/subscriber-map';
 
 type DataProvider = 'mtn' | 'telecel';
+
+type DataDisplayMode = 'calls' | 'momo';
 
 type DashboardSubscriber = {
   subscriberKey: string;
@@ -37,15 +45,54 @@ type TelecelDashboardCallRecord = DashboardCallRecord & {
 
 type DashboardCallTypeLabel = TelecelDashboardCallRecord['rawCallType'];
 
+type DashboardMomoTransaction = {
+  id: number;
+  statementId: string;
+  subscriberNumber: string;
+  dateTime: string;
+  transactionType: string;
+  paidIn: number;
+  withdrawn: number;
+  deposit: number;
+  balance: number;
+  oppositeParty?: string;
+  receiptNo?: string;
+  details?: string;
+  fromAccount?: string;
+  fromAccountName?: string;
+  fromPhoneNumber?: string;
+  toMsisdn?: string;
+  toAccountName?: string;
+};
+
 type CommunicatorSummary = {
   number: string;
   callCount: number;
   totalDurationSeconds: number;
 };
 
+type MomoTransactionSummary = {
+  totalTransactions: number;
+  totalPaidIn: number;
+  totalWithdrawn: number;
+  currentBalance: number;
+};
+
+type MomoActivitySummary = {
+  details: string;
+  frequency: number;
+  totalPaidIn: number;
+  totalWithdrawn: number;
+};
+
+type UnclassifiedMtnTypeSummary = {
+  count: number;
+  topTypes: string[];
+};
+
 @Component({
   selector: 'app-dashboard',
-  imports: [SubscriberMap, DecimalPipe],
+  imports: [SubscriberMap, DecimalPipe, LowerCasePipe, DatePipe, CurrencyPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,35 +100,88 @@ type CommunicatorSummary = {
 export class Dashboard {
   private readonly mtnCallRecordService = inject(MtnCallRecordService);
   private readonly telecelCallService = inject(TelecelCall);
+  private readonly mtnMomoService = inject(MtnMomo);
+  private readonly telecelMomoService = inject(TelecelMomo);
 
   readonly dataProvider = signal<DataProvider>('mtn');
+  readonly displayMode = signal<DataDisplayMode>('calls');
   readonly selectedSubscriberId = signal('');
   readonly timelineSortOrder = signal<'asc' | 'desc'>('asc');
+  readonly momoSortOrder = signal<'asc' | 'desc'>('desc');
+  readonly currencyCode = 'GHS';
 
   readonly mtnSubscribersResource = this.mtnCallRecordService.getAllSubscriberInfos();
   readonly mtnCallRecordsResource = this.mtnCallRecordService.getAllCallRecords();
+  readonly mtnMomoStatementsResource = this.mtnMomoService.getAllStatements();
+  readonly mtnMomoTransactionsResource = this.mtnMomoService.getAllTransactions();
   readonly telecelSubscribersResource = this.telecelCallService.getAllSubscriberInfos();
   readonly telecelCallRecordsResource = this.telecelCallService.getAllCallRecords();
+  readonly telecelMomoStatementsResource = this.telecelMomoService.getAllStatements();
+  readonly telecelMomoTransactionsResource = this.telecelMomoService.getAllTransactions();
 
-  private readonly activeSubscribersResource = computed(() =>
-    this.dataProvider() === 'mtn' ? this.mtnSubscribersResource : this.telecelSubscribersResource
-  );
+  private readonly activeSubscribersResource = computed(() => {
+    if (this.displayMode() === 'momo') {
+      return this.dataProvider() === 'mtn' ? this.mtnMomoStatementsResource : this.telecelMomoStatementsResource;
+    }
+    return this.dataProvider() === 'mtn' ? this.mtnSubscribersResource : this.telecelSubscribersResource;
+  });
 
   private readonly activeCallRecordsResource = computed(() =>
     this.dataProvider() === 'mtn' ? this.mtnCallRecordsResource : this.telecelCallRecordsResource
   );
 
-  readonly isLoading = computed(() => this.isPendingStatus(this.activeSubscribersResource().status()) || this.isPendingStatus(this.activeCallRecordsResource().status()));
+  private readonly activeMomoTransactionsResource = computed(() =>
+    this.dataProvider() === 'mtn' ? this.mtnMomoTransactionsResource : this.telecelMomoTransactionsResource
+  );
 
-  readonly hasError = computed(() => this.activeSubscribersResource().status() === 'error' || this.activeCallRecordsResource().status() === 'error');
+  readonly isLoading = computed(() => {
+    if (this.displayMode() === 'momo') {
+      return this.isPendingStatus(this.activeSubscribersResource().status()) || this.isPendingStatus(this.activeMomoTransactionsResource().status());
+    }
+    return this.isPendingStatus(this.activeSubscribersResource().status()) || this.isPendingStatus(this.activeCallRecordsResource().status());
+  });
+
+  readonly hasError = computed(() => {
+    if (this.displayMode() === 'momo') {
+      return this.activeSubscribersResource().status() === 'error' || this.activeMomoTransactionsResource().status() === 'error';
+    }
+    return this.activeSubscribersResource().status() === 'error' || this.activeCallRecordsResource().status() === 'error';
+  });
 
   readonly errorMessage = computed(() => {
+    if (this.displayMode() === 'momo') {
+      const subscriberError = this.activeSubscribersResource().error();
+      const transactionError = this.activeMomoTransactionsResource().error();
+      return this.formatResourceError(subscriberError ?? transactionError);
+    }
     const subscriberError = this.activeSubscribersResource().error();
     const callRecordError = this.activeCallRecordsResource().error();
     return this.formatResourceError(subscriberError ?? callRecordError);
   });
 
   readonly subscribers = computed<DashboardSubscriber[]>(() => {
+    if (this.displayMode() === 'momo') {
+      if (this.dataProvider() === 'telecel') {
+        const rows = (this.telecelMomoStatementsResource.value() ?? []) as TelecelMomoStatement[];
+        return rows.map((statement) => ({
+          subscriberKey: String(statement.id ?? ''),
+          subscriberNumber: this.getTelecelMsisdn(statement),
+          fullName: this.getTelecelAccountHolderName(statement),
+          region: 'N/A',
+          homeCell: 'N/A',
+        }));
+      }
+
+      const rows = (this.mtnMomoStatementsResource.value() ?? []) as MtnMomoStatement[];
+      return rows.map((statement) => ({
+        subscriberKey: String(statement.id ?? ''),
+        subscriberNumber: this.getMtnCustomerNumber(statement),
+        fullName: this.getMtnAccountHolderName(statement),
+        region: 'N/A',
+        homeCell: 'N/A',
+      }));
+    }
+
     if (this.dataProvider() === 'telecel') {
       const rows = (this.telecelSubscribersResource.value() ?? []) as TelecelSubscriberInfo[];
       return rows.map((subscriber) => ({
@@ -167,6 +267,71 @@ export class Dashboard {
     });
   });
 
+  readonly mtnMomoTransactions = computed<DashboardMomoTransaction[]>(() => {
+    const rows = (this.mtnMomoTransactionsResource.value() ?? []) as MtnMomoTransaction[];
+    return rows.map((transaction) => {
+      const dateTime = transaction.TransactionDateTime ?? transaction.TransactionDate ?? new Date();
+      const dateTimeStr = dateTime instanceof Date ? dateTime.toISOString() : String(dateTime ?? new Date().toISOString());
+      const statementId = this.getMtnTransactionStatementId(transaction);
+      const transactionType = this.getMtnTransactionType(transaction);
+      const fromAmount = this.getMtnFromAmount(transaction);
+      const balanceAfterAmount = this.getMtnBalanceAfterAmount(transaction);
+      const toMsisdn = this.getMtnToMsisdn(transaction);
+      const fromAccount = this.getMtnFromAccount(transaction);
+      const fromAccountName = this.getMtnFromAccountName(transaction);
+      const fromPhoneNumber = this.getMtnFromPhoneNumber(transaction);
+      const toAccountName = this.getMtnToAccountName(transaction);
+      const toAccount = this.getMtnToAccount(transaction);
+      const paidIn = this.isMtnCashIn(transactionType) ? fromAmount : 0;
+      const withdrawn = this.isMtnCashOut(transactionType) ? fromAmount : 0;
+
+      return {
+        id: Number(transaction.id ?? 0),
+        statementId,
+        subscriberNumber: fromPhoneNumber || fromAccount,
+        dateTime: dateTimeStr,
+        transactionType,
+        paidIn,
+        withdrawn,
+        deposit: fromAmount,
+        balance: balanceAfterAmount,
+        oppositeParty: toAccountName || toAccount || toMsisdn,
+        receiptNo: String(transaction.FinancialId ?? ''),
+        details: this.buildMtnMomoDetails(toAccountName, toMsisdn),
+        fromAccount,
+        fromAccountName,
+        fromPhoneNumber,
+        toMsisdn,
+        toAccountName,
+      };
+    });
+  });
+
+  readonly telecelMomoTransactions = computed<DashboardMomoTransaction[]>(() => {
+    const rows = (this.telecelMomoTransactionsResource.value() ?? []) as TelecelMomoTransaction[];
+    return rows.map((transaction) => {
+      const dateTime = transaction.initiationTime ?? transaction.completionTime ?? new Date();
+      const dateTimeStr = dateTime instanceof Date ? dateTime.toISOString() : String(dateTime ?? new Date().toISOString());
+      const paidIn = this.parseMoneyValue(transaction.paidIn);
+      const withdrawn = this.parseMoneyValue(transaction.withdrawn);
+
+      return {
+        id: Number(transaction.id ?? 0),
+        statementId: String(transaction.telecelMomoStatementId ?? ''),
+        subscriberNumber: '', // Will be set from statement mapping
+        dateTime: dateTimeStr,
+        transactionType: String(transaction.transactionStatus ?? 'Unknown'),
+        paidIn,
+        withdrawn,
+        deposit: paidIn + withdrawn,
+        balance: this.parseMoneyValue(transaction.balance),
+        oppositeParty: String(transaction.oppositeParty ?? ''),
+        receiptNo: String(transaction.receiptNo ?? ''),
+        details: String(transaction.details ?? ''),
+      };
+    });
+  });
+
   readonly currentSubscriber = computed(() => {
     const id = this.selectedSubscriberId();
     const list = this.subscribers();
@@ -177,6 +342,20 @@ export class Dashboard {
       region: 'N/A',
       homeCell: 'N/A',
     };
+  });
+
+  readonly filteredMomoTransactions = computed(() => {
+    const selectedId = this.selectedSubscriberId();
+    const allTransactions = this.dataProvider() === 'mtn' ? this.mtnMomoTransactions() : this.telecelMomoTransactions();
+    const sortOrder = this.momoSortOrder();
+
+    return allTransactions
+      .filter((transaction) => !selectedId || transaction.statementId === selectedId)
+      .sort((a, b) => {
+        const leftTime = new Date(a.dateTime).getTime();
+        const rightTime = new Date(b.dateTime).getTime();
+        return sortOrder === 'asc' ? leftTime - rightTime : rightTime - leftTime;
+      });
   });
 
   readonly filteredRecords = computed(() => {
@@ -433,16 +612,153 @@ export class Dashboard {
     }
   );
 
-  constructor() {
-    effect(() => {
-      const subscriberList = this.subscribers();
-      if (!subscriberList.length) {
-        return;
+  readonly momoTransactionSummary = computed<MomoTransactionSummary>(() => {
+    const transactions = this.filteredMomoTransactions();
+    const latestTransaction = [...transactions].sort((left, right) =>
+      new Date(right.dateTime).getTime() - new Date(left.dateTime).getTime()
+    )[0];
+
+    return {
+      totalTransactions: transactions.length,
+      totalPaidIn: transactions.reduce((sum, t) => sum + t.paidIn, 0),
+      totalWithdrawn: transactions.reduce((sum, t) => sum + t.withdrawn, 0),
+      currentBalance: latestTransaction?.balance ?? 0,
+    };
+  });
+
+  readonly highestPaidInTransaction = computed<DashboardMomoTransaction | null>(() => {
+    const paidInTransactions = this.filteredMomoTransactions().filter((transaction) => transaction.paidIn > 0);
+    if (paidInTransactions.length === 0) {
+      return null;
+    }
+
+    return paidInTransactions.reduce((highest, transaction) =>
+      transaction.paidIn > highest.paidIn ? transaction : highest
+    );
+  });
+
+  readonly highestWithdrawnTransaction = computed<DashboardMomoTransaction | null>(() => {
+    const withdrawnTransactions = this.filteredMomoTransactions().filter((transaction) => transaction.withdrawn !== 0);
+    if (withdrawnTransactions.length === 0) {
+      return null;
+    }
+
+    return withdrawnTransactions.reduce((highest, transaction) =>
+      Math.abs(transaction.withdrawn) > Math.abs(highest.withdrawn) ? transaction : highest
+    );
+  });
+
+  readonly highestFrequencyMomoActivity = computed<MomoActivitySummary>(() => {
+    const activityGroups = new Map<string, MomoActivitySummary>();
+
+    this.filteredMomoTransactions().forEach((transaction) => {
+      const details = (transaction.details ?? transaction.transactionType ?? 'Unknown activity').trim() || 'Unknown activity';
+      const key = details.toLowerCase();
+      const current = activityGroups.get(key) ?? {
+        details,
+        frequency: 0,
+        totalPaidIn: 0,
+        totalWithdrawn: 0,
+      };
+
+      current.frequency += 1;
+      current.totalPaidIn += transaction.paidIn;
+      current.totalWithdrawn += transaction.withdrawn;
+      activityGroups.set(key, current);
+    });
+
+    if (activityGroups.size === 0) {
+      return {
+        details: 'No transaction activity',
+        frequency: 0,
+        totalPaidIn: 0,
+        totalWithdrawn: 0,
+      };
+    }
+
+    return [...activityGroups.values()].sort((left, right) => {
+      if (right.frequency !== left.frequency) {
+        return right.frequency - left.frequency;
       }
 
-      const currentSelected = this.selectedSubscriberId();
-      if (!currentSelected || !subscriberList.some((subscriber) => subscriber.subscriberKey === currentSelected)) {
-        this.selectedSubscriberId.set(subscriberList[0].subscriberKey);
+      const leftTotal = left.totalPaidIn + left.totalWithdrawn;
+      const rightTotal = right.totalPaidIn + right.totalWithdrawn;
+      return rightTotal - leftTotal;
+    })[0];
+  });
+
+  readonly unclassifiedMtnTypeSummary = computed<UnclassifiedMtnTypeSummary>(() => {
+    if (this.dataProvider() !== 'mtn' || this.displayMode() !== 'momo') {
+      return { count: 0, topTypes: [] };
+    }
+
+    const unclassified = this.filteredMomoTransactions().filter((transaction) => {
+      const type = transaction.transactionType ?? '';
+      return !this.isMtnCashIn(type) && !this.isMtnCashOut(type);
+    });
+
+    const frequencies = new Map<string, number>();
+    unclassified.forEach((transaction) => {
+      const key = this.normalizeMtnTransactionType(transaction.transactionType || 'Unknown');
+      frequencies.set(key, (frequencies.get(key) ?? 0) + 1);
+    });
+
+    const topTypes = [...frequencies.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3)
+      .map(([type]) => type);
+
+    return {
+      count: unclassified.length,
+      topTypes,
+    };
+  });
+
+  constructor() {
+    effect(() => {
+      // Explicitly track provider and display mode changes
+      const provider = this.dataProvider();
+      const displayMode = this.displayMode();
+      
+      // Explicitly access resources to ensure they're loading
+      const subscriberResourceStatus = this.activeSubscribersResource().status();
+      const transactionResourceStatus = displayMode === 'momo' ? this.activeMomoTransactionsResource().status() : this.activeCallRecordsResource().status();
+      
+      // Get the subscriber list
+      const subscriberList = this.subscribers();
+      
+      // Auto-select first subscriber if none is selected or current selection is invalid
+      if (subscriberList?.length > 0) {
+        const currentSelected = this.selectedSubscriberId();
+        if (!currentSelected || !subscriberList.some((subscriber) => subscriber.subscriberKey === currentSelected)) {
+          this.selectedSubscriberId.set(subscriberList[0].subscriberKey);
+        }
+      }
+    });
+
+    effect(() => {
+      // Track subscriber ID changes and trigger appropriate resource loads
+      const subscriberId = this.selectedSubscriberId();
+      const displayMode = this.displayMode();
+      const provider = this.dataProvider();
+
+      // Depending on display mode and provider, access the appropriate resources
+      if (displayMode === 'momo') {
+        if (provider === 'mtn') {
+          // Access MTN momo transactions resource to trigger load when subscriber changes
+          this.activeMomoTransactionsResource().value();
+        } else {
+          // Access Telecel momo transactions resource to trigger load when subscriber changes
+          this.activeMomoTransactionsResource().value();
+        }
+      } else {
+        if (provider === 'mtn') {
+          // Access MTN call records resource to trigger load when subscriber changes
+          this.activeCallRecordsResource().value();
+        } else {
+          // Access Telecel call records resource to trigger load when subscriber changes
+          this.activeCallRecordsResource().value();
+        }
       }
     });
   }
@@ -456,14 +772,30 @@ export class Dashboard {
   onSubscriberChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     this.selectedSubscriberId.set(select.value);
+    console.log(`Selected subscriber ID changed to: ${select.value}`);
+  }
+
+  onDisplayModeChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.displayMode.set(select.value as DataDisplayMode);
+    this.dataProvider.set('mtn');
+    this.selectedSubscriberId.set('');
   }
 
   get selectedProviderLabel(): string {
     return this.dataProvider() === 'mtn' ? 'MTN' : 'Telecel';
   }
 
+  get selectedDisplayModeLabel(): string {
+    return this.displayMode() === 'calls' ? 'Call Records' : 'Momo Transactions';
+  }
+
   setTimelineSortOrder(order: 'asc' | 'desc') {
     this.timelineSortOrder.set(order);
+  }
+
+  setMomoSortOrder(order: 'asc' | 'desc') {
+    this.momoSortOrder.set(order);
   }
 
   getCellIntensityWidth(cellIntensity: number): number {
@@ -539,6 +871,19 @@ export class Dashboard {
 
   private normalizeTelecelCallType(value?: string): DashboardCallTypeLabel {
     const normalized = (value ?? '').trim().toUpperCase();
+    const compact = normalized.replace(/[\s-]+/g, '_');
+
+    if (compact === 'OS') {
+      return 'SMS_OUTGOING';
+    }
+
+    if (compact === 'T') {
+      return 'VOICE_INCOMING';
+    }
+
+    if (compact === 'O') {
+      return 'VOICE_OUTGOING';
+    }
 
     if (normalized.includes('SMS') && normalized.includes('IN')) {
       return 'SMS_INCOMING';
@@ -564,5 +909,198 @@ export class Dashboard {
     if (normalized.includes('sms')) return 'sms';
     if (normalized.includes('data')) return 'data';
     return 'voice';
+  }
+
+  private getMtnAccountHolderName(statement: MtnMomoStatement): string {
+    const statementRecord = statement as unknown as Record<string, unknown>;
+    const firstName = String(
+      statement.firstName ?? statementRecord['Firstname'] ?? statementRecord['FirstName'] ?? ''
+    ).trim();
+    const surname = String(statement.surname ?? statementRecord['Surname'] ?? '').trim();
+    const fullName = `${firstName} ${surname}`.trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    return 'Unknown account holder';
+  }
+
+  private getMtnCustomerNumber(statement: MtnMomoStatement): string {
+    const statementRecord = statement as unknown as Record<string, unknown>;
+    return String(statement.customerNumber ?? statementRecord['CustomerNumber'] ?? '').trim();
+  }
+
+  private getTelecelAccountHolderName(statement: TelecelMomoStatement): string {
+    const statementRecord = statement as unknown as Record<string, unknown>;
+    const accountHolder = String(
+      statement.AccountHolder ?? statementRecord['accountHolder'] ?? statementRecord['Accountholder'] ?? ''
+    ).trim();
+    return accountHolder || 'Unknown account holder';
+  }
+
+  private getTelecelMsisdn(statement: TelecelMomoStatement): string {
+    const statementRecord = statement as unknown as Record<string, unknown>;
+    return String(statement.Msisdn ?? statementRecord['msisdn'] ?? statementRecord['MSISDN'] ?? '').trim();
+  }
+
+  private getMtnTransactionStatementId(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    const statementId =
+      transaction.StatementId ??
+      transactionRecord['statementId'] ??
+      transactionRecord['StatementID'] ??
+      transactionRecord['statement_id'] ??
+      transactionRecord['statementID'] ??
+      '';
+
+    return String(statementId).trim();
+  }
+
+  private getMtnFromAmount(transaction: MtnMomoTransaction): number {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return this.parseMoneyValue(
+      transaction.FromAmount ??
+      transactionRecord['fromAmount'] ??
+      transactionRecord['from_amount']
+    );
+  }
+
+  private getMtnBalanceAfterAmount(transaction: MtnMomoTransaction): number {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return this.parseMoneyValue(
+      transaction.BalanceAfterAmount ??
+      transactionRecord['balanceAfterAmount'] ??
+      transactionRecord['balance_after_amount']
+    );
+  }
+
+  private getMtnToMsisdn(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.ToMsisdn ??
+      transactionRecord['toMsisdn'] ??
+      transactionRecord['to_msisdn'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnFromAccount(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.FromAccount ??
+      transactionRecord['fromAccount'] ??
+      transaction.FromPhoneNumber ??
+      transactionRecord['fromPhoneNumber'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnFromAccountName(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.FromAccountName ??
+      transactionRecord['fromAccountName'] ??
+      transactionRecord['from_account_name'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnFromPhoneNumber(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.FromPhoneNumber ??
+      transactionRecord['fromPhoneNumber'] ??
+      transactionRecord['from_phone_number'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnToAccountName(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.ToAccountName ??
+      transactionRecord['toAccountName'] ??
+      transactionRecord['to_account_name'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnToAccount(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.ToAccount ??
+      transactionRecord['toAccount'] ??
+      transactionRecord['to_account'] ??
+      ''
+    ).trim();
+  }
+
+  private getMtnTransactionType(transaction: MtnMomoTransaction): string {
+    const transactionRecord = transaction as unknown as Record<string, unknown>;
+    return String(
+      transaction.TransactionType ??
+      transactionRecord['transactionType'] ??
+      transactionRecord['transaction_type'] ??
+      'Unknown'
+    ).trim();
+  }
+
+  private isMtnCashIn(transactionType: string): boolean {
+    const normalized = this.normalizeMtnTransactionType(transactionType);
+    const cashInTypes = new Set<string>([
+      'CASH_IN',
+      'CUSTOM_LOAN_PAYOUT',
+      'PAYMENT',
+    ]);
+    return cashInTypes.has(normalized);
+  }
+
+  private isMtnCashOut(transactionType: string): boolean {
+    const normalized = this.normalizeMtnTransactionType(transactionType);
+    const cashOutTypes = new Set<string>([
+      'CASH_OUT',
+      'CUSTOM_PROVIDER_LOAN_REPAYMENT',
+      'DEBT',
+      'CUSTOM_LOAN_DEBT_COLLECTION',
+      'TRANSFER',
+    ]);
+    return cashOutTypes.has(normalized);
+  }
+
+  private normalizeMtnTransactionType(transactionType: string): string {
+    return transactionType.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  }
+
+  private parseMoneyValue(value: unknown): number {
+    if (value == null || value === '') {
+      return 0;
+    }
+
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    const normalized = String(value)
+      .trim()
+      .replace(/,/g, '')
+      .replace(/[^\d+\-.]/g, '');
+
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private buildMtnMomoDetails(toAccountName: string, toMsisdn: string): string {
+    const details: string[] = [];
+
+    if (toAccountName) {
+      details.push(`ToAccountName: ${toAccountName}`);
+    }
+
+    if (toMsisdn) {
+      details.push(`ToMsisdn: ${toMsisdn}`);
+    }
+
+    return details.join(' | ');
   }
 }

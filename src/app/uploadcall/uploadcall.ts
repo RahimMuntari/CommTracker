@@ -52,62 +52,7 @@ onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0] ?? null;
   this.form.update(f => ({ ...f, file }));
-}
-
-
-
-  // onFileTypeChange(fileType: FileType) {
-  //   this.form.update(f => ({ ...f, fileType, file: null }));
-  // }
-
-  // onFileSelected(event: Event) {
-  //   const input = event.target as HTMLInputElement;
-  //   const file = input.files?.[0] ?? null;
-  //   this.form.update(f => ({ ...f, file }));
-  // }
-
-  // onCdrTypeChange(event: Event) {
-  //   const select = event.target as HTMLSelectElement;
-  //   this.cdrType.set(select.value as 'mtn' | 'telecel');
-  // }
-
-  // onFileTypeChange(event: Event) {
-  //   const select = event.target as HTMLSelectElement;
-  //   this.fileType.set(select.value as 'pdf' | 'excel');
-
-  //   // Reset file when type changes
-  //   this.file.set(null);
-  // }
-
-  // onFileSelected(event: Event) {
-  //   const input = event.target as HTMLInputElement;
-  //   const f = input.files?.[0] ?? null;
-  //   this.file.set(f);
-  // }
-
-  // upload() {
-  //   if (!this.formValid()) {
-  //     this.message.set('Please select a file');
-  //     return;
-  //   }
-
-  //   this.uploading.set(true);
-
-  //   this.uploadService.upload(
-  //     this.file()!,
-  //     this.cdrType(),
-  //     this.fileType()
-  //   ).subscribe({
-  //     next: () => {
-  //       this.message.set('Upload successful');
-  //       this.uploading.set(false);
-  //     },
-  //     error: () => {
-  //       this.message.set('Upload failed');
-  //       this.uploading.set(false);
-  //     }
-  //   });
-  // }  
+}  
 
    upload() {
     const value = this.form();

@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { MdrUploadFormModel } from '../mdr-upload-form-model';
+import { Component, computed, signal } from '@angular/core';
+import { FileType, MdrUploadFormModel, Provider } from '../mdr-upload-form-model';
 import { UploadMomoServices } from '../services/upload-momo-services';
 
 @Component({
@@ -10,23 +10,71 @@ import { UploadMomoServices } from '../services/upload-momo-services';
 })
 export class Uploadmomo {
 
-  model = new MdrUploadFormModel();
+  cdrType = signal<Provider>('Telecel');
+  fileType = signal<'pdf' | 'excel'>('pdf');
+  file = signal<File | null>(null);
 
+  message = signal('');
+  uploading = signal(false);
+
+  formValid = computed(() => this.form().file !== null);
+  
   constructor(private service: UploadMomoServices) {}  
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    this.model.file.set(file);
-  }
+   form = signal<MdrUploadFormModel>({
+      provider: '',
+      fileType: '',
+      file: null
+    });
+
+   accept = computed(() => {
+    const ft = this.form().fileType;
+    if (ft === 'pdf') return '.pdf,application/pdf';
+    if (ft === 'excel') return '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+    return '';
+  });
+
+ onProviderChange(event: Event) {
+   const select = event.target as HTMLSelectElement;
+   this.form.update(f => ({ ...f, provider: select.value as Provider }));
+   console.log('Provider changed to:', select.value);
+ }
+ 
+ onFileTypeChange(event: Event) {
+   const select = event.target as HTMLSelectElement;
+   this.form.update(f => ({ ...f, fileType: select.value as FileType, file: null }));
+ }
+ 
+ onFileSelected(event: Event) {
+   const input = event.target as HTMLInputElement;
+   const file = input.files?.[0] ?? null;
+   this.form.update(f => ({ ...f, file }));
+ } 
 
   onSubmit() {
-    const file = this.model.file();
-    if (!file) return;
+    const value = this.form();
+    if (!value.file || !value.provider || !value.fileType) return;
+    this.message.set('');
+    this.uploading.set(true);
+    
+    const formData = new FormData();
+    formData.append('provider', value.provider);
+    formData.append('fileType', value.fileType);
+    formData.append('file', value.file );
 
-    this.service.uploadMdr(this.model.provider(),this.model.fileType(),file).subscribe({
-      next: res => console.log('Uploaded', res),
-      error: err => console.error(err)
+    console.log('Uploading with form data:', formData.get('file'), formData.get('provider'), formData.get('fileType'));
+
+    this.service.uploadMdr(this.form).subscribe({
+      next: res => {
+        console.log('Uploaded', res);
+          this.message.set('Upload successful');
+        this.uploading.set(false);
+      },
+      error: err => {
+        console.error(err);
+         this.message.set('Upload failed');
+        this.uploading.set(false);
+      }
     });
   }
 
