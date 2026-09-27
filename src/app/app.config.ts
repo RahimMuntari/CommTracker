@@ -6,16 +6,11 @@ import { LogInService } from './services/log-in-service';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authContextInterceptor } from './auth-context-interceptor';
 
-// Factory function to kick off initialization logic
-export function initializeAppFactory(authService: LogInService) {
-  return () => authService.initializeAuth();
-}
-
+// Ensure auth restoration runs before route guards evaluate on refresh.
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-     // FIX: Using the modern, self-contained functional environment initializer
     provideAppInitializer(() => {
       const authService = inject(LogInService);
       authService.initializeAuth();

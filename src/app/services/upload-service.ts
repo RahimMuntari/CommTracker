@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 })
 export class UploadService {
   private readonly api = environment.apiUrl;
-  private readonly uploadCdrEndPoint = `${this.api}/cdr/upload`; // Adjust the endpoint as needed
+  private readonly uploadCdrEndPoint = `${this.api}/cdr/upload`; 
 
   constructor(private http: HttpClient) {}
 
@@ -19,18 +19,5 @@ export class UploadService {
   }
   
 }
-
-//  upload(file: File, cdrType: string, fileType: string) {
-//   const form = new FormData();
-//   form.append('file', file);
-
-//   // return this.http.post(
-//   //   `${this.api}?cdrType=${cdrType}&fileType=${fileType}`,
-//   //   form
-//   // );
-
-//    return this.http.post(
-//     `${this.api}`,form);
-// }
 
 

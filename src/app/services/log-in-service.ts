@@ -1,10 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { LogInRequest } from '../model/log-in-request';
 import { Observable, tap } from 'rxjs';
 import { LogInResponse } from '../model/log-in-response';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
@@ -12,10 +13,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 export class LogInService {
   
   private http = inject(HttpClient);
-  private route = inject(ActivatedRoute);
-
-
-
   private readonly apiUrl = environment.apiUrl; 
   private readonly loginGenerateEndpoint = `${this.apiUrl}/jwt/generate`;  
   
@@ -24,7 +21,7 @@ export class LogInService {
 
   readonly token = signal<string | null>(null);
   
-  constructor(private router: Router) {}   
+  constructor(private router: Router, private route: ActivatedRoute) {}   
 
   loginUser(loginRequest: LogInRequest): Observable<LogInResponse> {
 
@@ -64,6 +61,15 @@ export class LogInService {
     return response;
   }
 
+  validateResetToken(email: string, token: string): Observable<boolean|string> {
+    const params = new HttpParams().set('email', email).set('token', token);
+    console.log('Validating reset token for email:', email, 'with token:', token);
+    return  this.http.get<boolean|string>(
+      `${this.apiUrl}/applicationuser/verifyresettoken`, 
+      { params } // Body payload only contains email now
+      );
+  }
+
    // Track the active timer subscription so we can clear it on logout
   private refreshTimeoutRef: any = null;
 
@@ -71,6 +77,15 @@ export class LogInService {
    * Reads storage on application startup. Restores session and sets up timers.
    */
   initializeAuth(): void {
+    
+    if (this.redirectToResetPasswordIfValidLink()) {
+      console.log('Initializing authentication service...');
+      this.currentUser.set(null);
+      this.token.set(null);
+      localStorage.removeItem('auth_token');
+      return;
+    }
+
     const savedToken = localStorage.getItem('auth_token');
     console.log('Initializing authentication. Retrieved token from localStorage:', savedToken);
     if (savedToken && !this.isTokenExpired(savedToken)) {
@@ -101,10 +116,78 @@ export class LogInService {
         this.logout();
       }
     } else {
-     
+      
       console.log('No valid token found during initialization. Logging out.');
-      this.logout();
+      this.currentUser.set(null);
+      this.token.set(null);
+      localStorage.removeItem('auth_token');
     }
+  }
+
+  private redirectToResetPasswordIfValidLink(): boolean {
+    const currentUrlTree = this.router.parseUrl(this.router.url || '/');
+    const queryParams = currentUrlTree.queryParams;
+    const email = this.normalizeQueryValue(
+      queryParams['email'] ?? this.route.snapshot.queryParamMap.get('email')
+    );
+    const token = this.normalizeQueryValue(
+      queryParams['token'] ?? this.route.snapshot.queryParamMap.get('token')
+    );
+
+    console.log('Current query params:', { email, token });
+
+    if (!email || !token) {
+      console.log(`Reset password route params are missing or invalid.{email: ${email}, token: ${token}}`);
+      return false;
+    }
+
+    console.log('Reset password link detected with email:', email, 'and token:', token);
+
+    // let isValidResetLink = false;
+    // this.validateResetToken(email, token).subscribe({
+    //   next: (result) => {
+    //     isValidResetLink = result === true;
+    //   }
+    // });
+
+    // if (!isValidResetLink) {
+    // //   console.log('Reset password link is not valid.');
+    // //   return false;
+    // }
+
+    if (!this.isValidEmail(email) || !this.isValidResetToken(token)) {
+      console.warn('Reset password route params are not valid.');
+      return false;
+    }
+
+    const currentPrimaryPath = currentUrlTree.root.children['primary']?.segments
+      .map((segment) => segment.path)
+      .join('/');
+    if (currentPrimaryPath === 'reset-password') {
+      return true;
+    }
+
+    this.router.navigate(['/reset-password'], {
+      queryParams: { email, token },
+    });
+    return true;
+  }
+
+  private normalizeQueryValue(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private isValidResetToken(token: string): boolean {
+    return token.length >= 16 && !/\s/.test(token);
   }
 
   /**
@@ -138,8 +221,12 @@ export class LogInService {
    * Evaluates if the current browser session has a valid, active login state.
    */
   isLoggedIn(): boolean {
+    if (!this.token() && localStorage.getItem('auth_token')) {
+      this.initializeAuth();
+    }
+
     const activeToken = this.token() || localStorage.getItem('auth_token');
-    
+
     // 1. If no token exists, the user is definitely not logged in
     if (!activeToken) {
       return false;

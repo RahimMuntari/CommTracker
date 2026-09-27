@@ -4,13 +4,13 @@
     <div class="flex justify-between items-center h-16">
 
       <!-- Logo -->
-      <a [routerLink]="loginService.currentUser() ? '/home' : '/login'" class="shrink-0 flex items-center text-xl font-bold text-black relative z-50 pointer-events-auto">
-        COMM. TRACKER
+      <a [routerLink]="loginService.currentUser() ? '/dashboard' : '/login'" class="shrink-0 flex items-center text-xl font-bold text-black relative z-50 pointer-events-auto">
+        COMMS.TRACKER
       </a>
 
       <!-- Desktop Menu -->
       <div class="hidden md:flex space-x-6 items-center">
-        <a [routerLink]="'/home'" class="text-gray-700 hover:text-blue-600">Home</a>
+        <a [routerLink]="'/dashboard'" class="text-gray-700 hover:text-blue-600">Home</a>
         <a class="text-gray-700 hover:text-blue-600">About</a>
         <a [routerLink]="'/uploadcdr'" class="text-gray-700 hover:text-blue-600">Call Data Records</a>
         <a [routerLink]="'/uploadmdr'" class="text-gray-700 hover:text-blue-600">Mobile Money Records</a>
@@ -62,7 +62,7 @@
 
   @if (isMenuOpen) {
     <div class="md:hidden bg-white border-t border-gray-200">
-      <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Home</a>
+      <a [routerLink]="'/dashboard'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Home</a>
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">About</a>
       <a [routerLink]="'/uploadcdr'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Call Data Records</a>
       <a [routerLink]="'/uploadmdr'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Mobile Money Records</a>
