@@ -20,7 +20,7 @@ export interface LocationPoint {
 @Component({
   selector: 'app-subscriber-map',
   template: `
-    <div #mapContainer class="h-[360px] w-full rounded-xl border border-slate-200 bg-slate-100"></div>
+    <div #mapContainer class="w-full rounded-xl border border-slate-200 bg-slate-100" style="height: 420px;"></div>
   `,
   styles: [],
 })

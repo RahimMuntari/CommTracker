@@ -90,6 +90,17 @@ type UnclassifiedMtnTypeSummary = {
   topTypes: string[];
 };
 
+type MovementTimelineEvent = {
+  hour: string;
+  count: number;
+  cellName: string;
+  time: string;
+  latitude: number;
+  longitude: number;
+  dateTime: string;
+  subscriberId: string;
+};
+
 @Component({
   selector: 'app-dashboard',
   imports: [SubscriberMap, DecimalPipe, LowerCasePipe, DatePipe, CurrencyPipe],
@@ -106,6 +117,7 @@ export class Dashboard {
   readonly dataProvider = signal<DataProvider>('mtn');
   readonly displayMode = signal<DataDisplayMode>('calls');
   readonly selectedSubscriberId = signal('');
+  readonly subscriberSearchQuery = signal('');
   readonly timelineSortOrder = signal<'asc' | 'desc'>('asc');
   readonly momoSortOrder = signal<'asc' | 'desc'>('desc');
   readonly currencyCode = 'GHS';
@@ -201,6 +213,21 @@ export class Dashboard {
       region: 'N/A',
       homeCell: 'N/A',
     }));
+  });
+
+  readonly filteredSubscribers = computed<DashboardSubscriber[]>(() => {
+    const query = this.subscriberSearchQuery().trim().toLowerCase();
+    const allSubscribers = this.subscribers();
+
+    if (!query) {
+      return allSubscribers;
+    }
+
+    return allSubscribers.filter((subscriber) => {
+      const name = subscriber.fullName.toLowerCase();
+      const number = subscriber.subscriberNumber.toLowerCase();
+      return name.includes(query) || number.includes(query);
+    });
   });
 
   readonly callRecords = computed<DashboardCallRecord[]>(() => {
@@ -472,21 +499,13 @@ export class Dashboard {
       .sort((a, b) => b.count - a.count);
   });
   readonly movementTimeline = computed(() => {
-    const groups = new Map<string, { day: string; events: { hour: string; count: number; cellName: string; time: string; latitude: number; longitude: number; dateTime: string }[] }>();
+    const groups = new Map<string, { day: string; events: MovementTimelineEvent[] }>();
 
     this.mapRecords().forEach((record) => {
       const date = new Date(record.dateTime);
       const dayKey = date.toISOString().slice(0, 10);
-      const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`;
-      const dateTime = date.toLocaleString(undefined, {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
+      const hourKey = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+      const dateTime = date.toISOString();
 
       if (!groups.has(dayKey)) {
         groups.set(dayKey, {
@@ -505,6 +524,7 @@ export class Dashboard {
         event.latitude = record.latitude;
         event.longitude = record.longitude;
         event.dateTime = dateTime;
+        event.subscriberId = record.subscriberId;
       } else {
         dayGroup.events.push({
           hour: hourKey,
@@ -514,6 +534,7 @@ export class Dashboard {
           latitude: record.latitude,
           longitude: record.longitude,
           dateTime,
+          subscriberId: record.subscriberId,
         });
       }
     });
@@ -725,7 +746,7 @@ export class Dashboard {
       const transactionResourceStatus = displayMode === 'momo' ? this.activeMomoTransactionsResource().status() : this.activeCallRecordsResource().status();
       
       // Get the subscriber list
-      const subscriberList = this.subscribers();
+      const subscriberList = this.filteredSubscribers();
       
       // Auto-select first subscriber if none is selected or current selection is invalid
       if (subscriberList?.length > 0) {
@@ -733,6 +754,8 @@ export class Dashboard {
         if (!currentSelected || !subscriberList.some((subscriber) => subscriber.subscriberKey === currentSelected)) {
           this.selectedSubscriberId.set(subscriberList[0].subscriberKey);
         }
+      } else {
+        this.selectedSubscriberId.set('');
       }
     });
 
@@ -766,6 +789,7 @@ export class Dashboard {
   onProviderChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     this.dataProvider.set(select.value as DataProvider);
+    this.subscriberSearchQuery.set('');
     this.selectedSubscriberId.set('');
   }
 
@@ -779,7 +803,13 @@ export class Dashboard {
     const select = event.target as HTMLSelectElement;
     this.displayMode.set(select.value as DataDisplayMode);
     this.dataProvider.set('mtn');
+    this.subscriberSearchQuery.set('');
     this.selectedSubscriberId.set('');
+  }
+
+  onSubscriberSearchInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.subscriberSearchQuery.set(input.value);
   }
 
   get selectedProviderLabel(): string {
@@ -796,6 +826,43 @@ export class Dashboard {
 
   setMomoSortOrder(order: 'asc' | 'desc') {
     this.momoSortOrder.set(order);
+  }
+
+  openCellSiteInGoogleMaps(event: { latitude: number; longitude: number }) {
+    const { latitude, longitude } = event;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return;
+    }
+
+    const query = `${latitude},${longitude}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    this.openExternalUrl(mapsUrl);
+  }
+
+  shareMovementEventViaWhatsApp(event: MovementTimelineEvent, dayLabel: string) {
+    const shareText = this.buildMovementEventShareText(event, dayLabel);
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    this.openExternalUrl(whatsappUrl);
+  }
+
+  shareMovementEventViaEmail(event: MovementTimelineEvent, dayLabel: string) {
+    const subject = `Movement timeline update: ${event.cellName}`;
+    const body = this.buildMovementEventShareText(event, dayLabel);
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    this.openExternalUrl(mailtoUrl);
+  }
+
+  shareTopSiteViaWhatsApp(cell: { name: string; count: number; totalDuration: number; latitude: number; longitude: number }) {
+    const shareText = this.buildTopSiteShareText(cell);
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    this.openExternalUrl(whatsappUrl);
+  }
+
+  shareTopSiteViaEmail(cell: { name: string; count: number; totalDuration: number; latitude: number; longitude: number }) {
+    const subject = `Top site update: ${cell.name}`;
+    const body = this.buildTopSiteShareText(cell);
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    this.openExternalUrl(mailtoUrl);
   }
 
   getCellIntensityWidth(cellIntensity: number): number {
@@ -1102,5 +1169,77 @@ export class Dashboard {
     }
 
     return details.join(' | ');
+  }
+
+  private buildMovementEventShareText(event: MovementTimelineEvent, dayLabel: string): string {
+    const provider = this.dataProvider();
+    const current = this.resolveSubscriberForEvent(event);
+    const subscriberLines =
+      provider === 'mtn'
+        ? [
+            `Subscriber Name: ${current.fullName || 'Unknown subscriber'}`,
+            `MSISDN Key: ${current.subscriberNumber || event.subscriberId || 'N/A'}`,
+          ]
+        : [
+            `Subscriber Name: ${current.fullName || 'Unknown subscriber'}`,
+            `Owner Number: ${event.subscriberId || current.subscriberNumber || 'N/A'}`,
+          ];
+
+    return [
+      `Movement event`,
+      `Provider: ${this.selectedProviderLabel}`,
+      ...subscriberLines,
+      `Day: ${dayLabel}`,
+      `Time: ${event.hour}`,
+      `Cell Site: ${event.cellName}`,
+      `Events: ${event.count}`,
+      `Coordinates: ${event.latitude}, ${event.longitude}`,
+      `Google Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.latitude},${event.longitude}`)}`,
+    ].join('\n');
+  }
+
+  private buildTopSiteShareText(cell: { name: string; count: number; totalDuration: number; latitude: number; longitude: number }): string {
+    const subscriber = this.currentSubscriber();
+    const provider = this.dataProvider();
+    const subscriberLines =
+      provider === 'mtn'
+        ? [
+            `Subscriber Name: ${subscriber.fullName || 'Unknown subscriber'}`,
+            `MSISDN Key: ${subscriber.subscriberNumber || 'N/A'}`,
+          ]
+        : [
+            `Subscriber Name: ${subscriber.fullName || 'Unknown subscriber'}`,
+            `Owner Number: ${subscriber.subscriberNumber || 'N/A'}`,
+          ];
+
+    return [
+      `Top site`,
+      `Provider: ${this.selectedProviderLabel}`,
+      ...subscriberLines,
+      `Cell Site: ${cell.name}`,
+      `Events: ${cell.count}`,
+      `Total Duration: ${(cell.totalDuration / 60).toFixed(0)} min`,
+      `Coordinates: ${cell.latitude}, ${cell.longitude}`,
+      `Google Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${cell.latitude},${cell.longitude}`)}`,
+    ].join('\n');
+  }
+
+  private resolveSubscriberForEvent(event: MovementTimelineEvent): DashboardSubscriber {
+    const candidates = this.subscribers();
+
+    return (
+      candidates.find((subscriber) =>
+        subscriber.subscriberKey === event.subscriberId || subscriber.subscriberNumber === event.subscriberId
+      ) ??
+      this.currentSubscriber()
+    );
+  }
+
+  private openExternalUrl(url: string) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
