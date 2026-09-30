@@ -54,27 +54,62 @@ onFileSelected(event: Event) {
   this.form.update(f => ({ ...f, file }));
 }  
 
-   upload() {
+upload() {
     const value = this.form();
     if (!value.provider || !value.fileType || !value.file) return;
     this.message.set('');
     this.uploading.set(true);
-    console.log('Uploading with values:', value);
+    //console.log('Uploading with values:', value);
     const formData = new FormData();
     formData.append('provider', value.provider);
     formData.append('fileType', value.fileType);
     formData.append('file', value.file);
 
     this.uploadService.upload(formData).subscribe({
-      next: () => {
-        this.message.set('Upload successful');
+      next: (response: any) => {
+        // 1. Handles Results.Ok
+        const successMsg = response?.message || 'Upload successful';
+        this.message.set(successMsg);
         this.uploading.set(false);
+        
+        // Optional: Capture additional success metrics
+        console.log(`Processed ${response?.recordsProcessed} records for ${response?.subscriber}`);
       },
-      error: () => {
-        this.message.set('Upload failed');
+      error: (httpError: any) => {
         this.uploading.set(false);
+        
+        // Extract backend payload from the HttpErrorResponse
+        const errorBody = httpError.error;
+        console.error('Upload error:', errorBody);
+        // 2. Handles Results.Problem (RFC 7807 Standard)
+        if (errorBody && errorBody.detail) {
+          this.message.set(`${errorBody.title}: ${errorBody.detail}`);
+          return;
+        }
+
+        // 3. Handles custom Results.BadRequest shapes
+        if (errorBody && errorBody.message) {
+          const details = errorBody.details || errorBody.error || '';
+          this.message.set(`${errorBody.message} ${details}`);
+          return;
+        }
+
+        // Fallback if the server drops completely or returns a raw string
+        this.message.set('An unexpected network error occurred.');
       }
     });
-    //this.http.post('/api/cdr/upload', formData).subscribe();
+
+
+    // this.uploadService.upload(formData).subscribe({
+    //   next: () => {
+    //     this.message.set('Upload successful');
+    //     this.uploading.set(false);
+    //   },
+    //   error: () => {
+    //     this.message.set('Upload failed');
+    //     this.uploading.set(false);
+    //   }
+    // });
+    // //this.http.post('/api/cdr/upload', formData).subscribe();
   }
 }

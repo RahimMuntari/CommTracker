@@ -13,9 +13,11 @@ export class UploadService {
   constructor(private http: HttpClient) {}
 
   upload(formData: FormData) {
-        console.log('Uploading with form data:', formData);
-        console.log('Upload endpoint:', this.uploadCdrEndPoint);
-        return this.http.post(this.uploadCdrEndPoint, formData);
+        //console.log('Uploading with form data:', formData);
+        //console.log('Upload endpoint:', this.uploadCdrEndPoint);
+        var result =  this.http.post(this.uploadCdrEndPoint, formData);
+        console.log('Upload result:', result);
+        return result;
   }
   
 }
