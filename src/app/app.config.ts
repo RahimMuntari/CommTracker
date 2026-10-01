@@ -1,5 +1,5 @@
 import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withDebugTracing } from '@angular/router';
+import { provideRouter, withDebugTracing, withHashLocation } from '@angular/router';
 
 import { routes } from './app.routes';
 import { LogInService } from './services/log-in-service';
@@ -10,7 +10,7 @@ import { authContextInterceptor } from './auth-context-interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes,withHashLocation()),
     provideAppInitializer(() => {
       const authService = inject(LogInService);
       authService.initializeAuth();
