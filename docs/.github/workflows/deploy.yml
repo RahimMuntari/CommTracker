@@ -27,7 +27,7 @@ jobs:
       - name: Build Angular app
         run: ng build --output-path docs --base-href /CommTracker/
 
-      - name: Move browser files to docs root (if Angular creates subfolder)
+      - name: Move browser files to docs root
         run: |
           if [ -d "docs/browser" ]; then
             mv docs/browser/* docs/

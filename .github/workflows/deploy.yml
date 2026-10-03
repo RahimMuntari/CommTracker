@@ -21,10 +21,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Angular CLI
+        run: npm install -g @angular/cli
+
       - name: Build Angular app
         run: ng build --output-path docs --base-href /CommTracker/
 
-      - name: Move browser files to docs root (if Angular creates subfolder)
+      - name: Move browser files to docs root
         run: |
           if [ -d "docs/browser" ]; then
             mv docs/browser/* docs/
