@@ -1,5 +1,5 @@
 export const environment = {
-  production: false,
+  production: true,
   apiUrl: 'https://commtrackerbackend-yskw.onrender.com',
   // apiUrl: 'https://myapp.com/api',
   apiKey: 'PROD_KEY_ABC'

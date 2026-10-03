@@ -1,10 +1,10 @@
 <nav class="bg-white shadow-md fixed w-full z-10">
 <!-- <nav class="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"> -->
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center h-16">
+    <div class="flex justify-between items-center h-16 gap-2">
 
       <!-- Logo -->
-      <a [routerLink]="loginService.currentUser() ? '/dashboard' : '/login'" class="shrink-0 flex items-center text-xl font-bold text-black relative z-50 pointer-events-auto">
+      <a [routerLink]="loginService.currentUser() ? '/dashboard' : '/login'" class="min-w-0 shrink flex items-center text-sm sm:text-base md:text-xl font-bold text-black relative z-50 pointer-events-auto truncate max-w-42 sm:max-w-52 md:max-w-none">
         COMMS.INTELLIGENCE
       </a>
 
@@ -17,15 +17,16 @@
         <a class="text-gray-700 hover:text-blue-600">Contact</a>
       </div>
 
+      <div class="flex items-center gap-2 ml-2 shrink-0">
       @if (loginService.isLoggedIn()) {
-        <span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+        <span class="hidden md:inline-flex text-xs md:text-sm font-medium text-emerald-600 bg-emerald-50 px-2.5 md:px-3 py-1 rounded-full border border-emerald-200 max-w-48 md:max-w-none truncate">
           👋 Welcome back! {{loginService.currentUser()}}
         </span>
-           <button (click)="loginService.logout()" class="text-sm text-red-600 hover:underline font-medium ml-2">
+           <button (click)="loginService.logout()" class="hidden md:inline-flex text-xs md:text-sm text-red-600 hover:underline font-medium">
             Logout
           </button>
       } @else {
-        <a routerLink="/login" class="text-blue-600 font-medium hover:underline">Sign In</a>
+        <a routerLink="/login" class="hidden md:inline-flex text-blue-600 text-sm font-medium hover:underline">Sign In</a>
       }
 
         <!-- @if (loginService.currentUser(); as name) {
@@ -40,28 +41,56 @@
         } -->
 
        <!-- Dark Mode Toggle -->
-      <button 
+      <button
         (click)="toggleDarkMode()" 
-        class="h-10 w-10 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+        class="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+        aria-label="Toggle dark mode"
       >
         {{ isDarkMode ? '🌙' : '☀️' }}
       </button>
 
       <!-- Mobile Hamburger -->
       <div class="flex items-center md:hidden">
-        <button (click)="toggleMenu()" class="text-gray-700 focus:outline-none">
+        <button
+          (click)="toggleMenu()"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          [attr.aria-expanded]="isMenuOpen"
+          aria-controls="mobile-nav"
+          aria-label="Toggle navigation menu"
+        >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"
                viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
         </button>
       </div>
+      </div>
 
     </div>
   </div>
 
+  @if (loginService.isLoggedIn()) {
+    <div class="md:hidden px-4 pb-2">
+      <span class="block text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 w-fit max-w-full truncate">
+        👋 Welcome back! {{loginService.currentUser()}}
+      </span>
+    </div>
+  }
+
   @if (isMenuOpen) {
-    <div class="md:hidden bg-white border-t border-gray-200">
+    <div id="mobile-nav" class="md:hidden bg-white border-t border-gray-200">
+      @if (loginService.isLoggedIn()) {
+        <div class="px-4 py-3 border-b border-gray-200">
+          <span class="block text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 w-fit max-w-full truncate">
+            👋 Welcome back! {{loginService.currentUser()}}
+          </span>
+          <button (click)="loginService.logout()" class="mt-2 text-sm text-red-600 hover:underline font-medium">
+            Logout
+          </button>
+        </div>
+      } @else {
+        <a routerLink="/login" class="block px-4 py-2 text-blue-600 hover:bg-gray-100 font-medium">Sign In</a>
+      }
       <a [routerLink]="'/dashboard'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Home</a>
       <a class="block px-4 py-2 text-gray-700 hover:bg-gray-100">About</a>
       <a [routerLink]="'/uploadcdr'" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Call Data Records</a>

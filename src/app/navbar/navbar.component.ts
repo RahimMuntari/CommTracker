@@ -1,11 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from "@angular/router";
 import { LogInService } from '../services/log-in-service';
-import { FormField } from "@angular/forms/signals";
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, FormField],
+  imports: [RouterLink],
   templateUrl:'./navbar.component.html',
   styleUrls: ['./navbar.component.css'],
 })
