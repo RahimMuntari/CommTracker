@@ -66,15 +66,34 @@ export class Uploadmomo {
 
     this.service.uploadMdr(this.form).subscribe({
       next: res => {
-        console.log('Uploaded', res);
-          this.message.set('Upload successful');
+        this.message.set(res.message);
         this.uploading.set(false);
       },
+
       error: err => {
-        console.error(err);
-         this.message.set('Upload failed');
+        this.message.set(
+          err?.error?.message ?? 'Upload failed'
+        );
         this.uploading.set(false);
       }
+      // next: res => {
+      //   console.log('Uploaded', res);
+      //     this.message.set('Upload successful');
+      //   this.uploading.set(false);
+      // },
+      // error: err => {
+      //   console.error(err);
+
+      //   const errorMessage =
+      //     err?.error?.error ||
+      //     err?.error?.detail ||
+      //     err?.message ||
+      //     'Upload failed';
+
+      //   this.message.set(errorMessage);
+
+      //   this.uploading.set(false);
+      // }
     });
   }
 
